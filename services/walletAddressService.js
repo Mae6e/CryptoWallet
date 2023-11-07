@@ -7,6 +7,12 @@ const { execSync } = require('child_process');
 const { PublicPath } = require('../index');
 const Response = require('../utils/response');
 
+const NodeHelper = require('../utils/nodeHelper');
+const nodeHelper = new NodeHelper();
+
+const UserAddressRepository = require('../repositories/userAddressRepository');
+const NetworkRepository = require('../repositories/networkRepository');
+
 //? utils
 const {
     CoinPaymentPrivateKey,
@@ -14,13 +20,11 @@ const {
     XRPAddress,
     CoinpaymentCurrencies,
     Web3Networks,
-    NetworkName } = require('../utils');
+    NetworkName,
+    NetworkSymbol } = require('../utils');
 
 const { randomString } = require('../utils/walletHelper');
 const { encryptText } = require('../utils/cryptoEngine');
-
-//? models
-const UserAddress = require('../models/userAddress');
 
 class WalletAddressService {
 
@@ -45,7 +49,7 @@ class WalletAddressService {
         for (let i = 0; i < len; i++) {
             xrpTag += characters.charAt(Math.floor(Math.random() * charactersLength));
         }
-        const checkKey = await UserAddress.countDocuments({ address: { $elemMatch: { tag: xrpTag, currency: 'XRP' } } });
+        const checkKey = await UserAddressRepository.countOfTagByCurrency({ currency: 'XRP', tag: xrpTag });
         if (checkKey > 0) {
             return this.generateXRPTag(8);
         } else {
@@ -60,7 +64,7 @@ class WalletAddressService {
         for (let i = 0; i < len; i++) {
             xlmTag += characters.charAt(Math.floor(Math.random() * charactersLength));
         }
-        const checkKey = await UserAddress.countDocuments({ address: { $elemMatch: { tag: xlmTag, currency: 'XLM' } } });
+        const checkKey = await UserAddressRepository.countOfTagByCurrency({ currency: 'XLM', tag: xlmTag });
         if (checkKey > 0) {
             return this.generateXLMTag(12);
         } else {
@@ -68,7 +72,7 @@ class WalletAddressService {
         }
     }
 
-    getAddress = async (data) => {
+    generateAddress = async (data) => {
         let { networkSymbol, networkName } = data;
 
         if (!networkSymbol || !networkName) {
@@ -146,6 +150,102 @@ class WalletAddressService {
             return Response.warn('Invalid request');
         }
     };
+
+    getSiteWalletBalance = async (data) => {
+        const { currency, networkName } = data;
+        if (!data.currency || !networkName) {
+            return Response.warn('Please Enter Network and Currency Information');
+        }
+
+        const network = await NetworkRepository.getNetworkByName(networkName);
+        if (!network) {
+            return Response.warn('Invalid Network');
+        }
+
+        //const bnbTokens = config.common.bnb_tokens;
+
+        let web3Network;
+        if (networkName) {
+            networkName = networkName.toUpperCase();
+            web3Network = this.getWeb3Network(networkName);
+        }
+
+        if (CoinpaymentCurrencies.includes(networkSymbol)) {
+
+        }
+        else if (networkName.includes(NetworkName.RIPPLE)) {
+            if (currency === NetworkSymbol.XRP) {
+                const adminAddress = network.siteWallet.publicKey;
+                const balance = nodeHelper.getRippleBalance(adminAddress);
+                return Response.success({ balance, address: adminAddress });
+            } else {
+                return Response.warn('Currently, do not support currency');
+            }
+        }
+        else if (networkName.includes(NetworkName.TRC20)) {
+            if (currency === NetworkSymbol.TRX) {
+                const adminAddress = network.siteWallet.publicKey;
+                const balance = nodeHelper.getTrc20Balance(adminAddress);
+                return Response.success({ balance, address: adminAddress });
+            }
+            else {
+                const adminAddress = network.siteWallet.publicKey;
+                const conts = config.common.trx_contracts;
+                const contract = conts[currency];
+                const tokenBal = nodeHelper.getTrc20TokenBalance(contract, adminAddress);
+                //TODO add unit in db
+                const balance = tokenBal / 1000000;
+                return Response.success({ balance, address: adminAddress });
+            }
+        }
+        else if (web3Network) {
+
+        }
+        else {
+            return Response.warn('Invalid request');
+        }
+
+        if (currency === 'XRP') {
+            // const adminAddr = config.common.XRP.address;
+            // let value = 0;
+            // const output = ripple.execSync(`cd ${__dirname}/ripple && node ripple_balance.js "${adminAddr}"`);
+            // const output1 = JSON.parse(output);
+            // if (output1 && output1[0].currency === 'XRP') {
+            //     value = output1[0].value;
+            // }
+            // return res.json({ status: 1, result: value, address: adminAddr });
+        } else if (currency === 'TRX') {
+            // const adminAddr = config.common.TRX.address;
+            // const trxBal = getTrxBalance(adminAddr); // Assuming getTrxBalance is implemented
+            // return res.json({ status: 1, result: trxBal, address: adminAddr });
+        } else if (currency === 'BNB') {
+            const adminAddr = config.common.BNB.address;
+            const getBalance = ConnectBnb.bnbFunctions('checkBalance', { address: adminAddr });
+            return res.json({ status: 1, result: getBalance.result, address: adminAddr });
+        } else if (currency === 'USDT') {
+            // const adminAddr = config.common.TRX.address;
+            // const conts = config.common.trx_contracts;
+            // const contract = conts[currency];
+            // const tokenBal = getTokenBalance(contract, adminAddr, currency); // Assuming getTokenBalance is implemented
+            // const balance = tokenBal / 1000000;
+            // return res.json({ status: 1, result: balance, address: adminAddr });
+        } else if (bnbTokens.includes(currency)) {
+            const coin = SiteWallet.findOne({ type: currency }).select('password portnumber username');
+            const contractAddr = coin.password;
+            const decimalPoint = coin.portnumber;
+            const adminAddr = coin.username;
+            const getDecimals = decimalPoint + 1;
+            const decimals = '1'.padEnd(getDecimals, '0');
+
+            const balData = { address: adminAddr, contract: contractAddr };
+            const getTokBal = ConnectBnb.bnbFunctions('tokenBalance', balData);
+            const tokenBal = getTokBal.result;
+            const balance = tokenBal / decimals;
+            return res.json({ status: 1, result: balance, address: adminAddr });
+        } else {
+            return res.json({ status: 0 });
+        }
+    }
 }
 
 module.exports = WalletAddressService;

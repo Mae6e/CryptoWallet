@@ -6,9 +6,9 @@ const walletAddressService = new WalletAddressService();
 
 
 class WalletAddressController {
-    getAddress = catchAsync(async (req, res) => {
+    generateAddress = catchAsync(async (req, res) => {
         const data = req.body;
-        const response = await walletAddressService.getAddress(data);
+        const response = await walletAddressService.generateAddress(data);
         return res.status(response.statusCode).json(response);
     });
 }
