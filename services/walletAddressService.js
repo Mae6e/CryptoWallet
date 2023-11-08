@@ -196,6 +196,7 @@ class WalletAddressService {
         }
         else if (networkName.includes(NetworkName.TRC20)) {
             if (symbol === NetworkSymbol.TRX) {
+                console.log("this is code");
                 const adminAddress = network.siteWallet.publicKey;
                 const balance = nodeHelper.getTrc20Balance(adminAddress);
                 return Response.success({ balance, address: adminAddress });
@@ -214,22 +215,24 @@ class WalletAddressService {
             if (symbol === NetworkSymbol.BNB ||
                 symbol === NetworkSymbol.ETH) {
                 const adminAddress = network.siteWallet.publicKey;
+                console.log(adminAddress);
+
                 const getBalance = nodeHelper.getWeb3Balance(web3Network, adminAddress);
                 return Response.success({ balance: getBalance, address: adminAddress });
             }
-            else {
-                const adminAddress = network.siteWallet.publicKey;
-                const contract = currency.contractAddress;
-                const decimalPoint = currency.decimalPoint;
+            // else {
+            //     const adminAddress = network.siteWallet.publicKey;
+            //     const contract = currency.contractAddress;
+            //     const decimalPoint = currency.decimalPoint;
 
-                const getDecimals = decimalPoint + 1;
-                const decimals = '1'.padEnd(getDecimals, '0');
+            //     const getDecimals = decimalPoint + 1;
+            //     const decimals = '1'.padEnd(getDecimals, '0');
 
-                const getBalance = nodeHelper.getWeb3TokenBalance(web3Network, adminAddress, contract);
-                const tokenBal = getBalance;
-                const balance = tokenBal / decimals;
-                return Response.success({ balance, address: adminAddress });
-            }
+            //     const getBalance = nodeHelper.getWeb3TokenBalance(web3Network, adminAddress, contract);
+            //     const tokenBal = getBalance;
+            //     const balance = tokenBal / decimals;
+            //     return Response.success({ balance, address: adminAddress });
+            // }
         }
         else {
             return Response.warn('Invalid request');
