@@ -11,6 +11,12 @@ class WalletAddressController {
         const response = await walletAddressService.generateAddress(data);
         return res.status(response.statusCode).json(response);
     });
+
+    getSiteWalletBalance = catchAsync(async (req, res) => {
+        const data = req.body;
+        const response = await walletAddressService.getSiteWalletBalance(data);
+        return res.status(response.statusCode).json(response);
+    });
 }
 
 module.exports = WalletAddressController;

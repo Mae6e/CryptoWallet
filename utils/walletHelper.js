@@ -42,6 +42,9 @@ function randomString(length) {
 }
 
 function bchexdec(hex) {
+    console.log('hex hex hex');
+    console.log(hex);
+
     if (hex.length === 1) {
         return parseInt(hex, 16);
     } else {
@@ -223,5 +226,6 @@ async function getAccountDepositAddress(params, cmd, postfields) {
 
 module.exports = {
     encrypText,
-    randomString
+    randomString,
+    bchexdec
 }
