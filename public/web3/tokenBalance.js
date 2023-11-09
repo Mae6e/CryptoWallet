@@ -3,7 +3,9 @@ const { NetworkName } = require('../../utils');
 
 //? Use the web3Network variable in your script
 const network = process.argv[2];
-const address = process.argv[3];
+const contract = process.argv[3];
+const address = process.argv[4];
+
 let web3;
 
 //? MainNet
@@ -22,10 +24,23 @@ else if (network === NetworkName.POLYGON) {
     return;
 }
 
-web3.eth.getBalance(address)
-    .then((result) => {
-        console.log(JSON.stringify(web3.utils.fromWei(result, 'ether')));
+const minABI = [
+    {
+        constant: true,
+        inputs: [{ name: '_owner', type: 'address' }],
+        name: 'balanceOf',
+        outputs: [{ name: 'balance', type: 'uint256' }],
+        type: 'function',
+    },
+]
 
-    }).catch((error) => {
-        console.log(JSON.stringify(0))
+const tokenContract = new web3.eth.Contract(minABI, contract);
+
+const balance = await tokenContract.methods.balanceOf(address).call()
+    .then(balance => {
+        console.log(JSON.stringify(balance));
+    })
+    .catch(error => {
+        console.error(JSON.stringify('0'));
     });
+
