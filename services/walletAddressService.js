@@ -188,11 +188,9 @@ class WalletAddressService {
         }
         else if (networkName.includes(NetworkName.RIPPLE)) {
             if (currency.type === CurrencyType.COIIN) {
-                console.log('hererer hererer');
 
                 const adminAddress = network.siteWallet.publicKey;
                 const balance = nodeHelper.getRippleBalance(adminAddress);
-                console.log(balance);
                 return Response.success({ balance, address: adminAddress });
             } else {
                 return Response.warn('Currently, do not support currency');

@@ -59,7 +59,6 @@ class NodeHelper {
         try {
             const command = `cd ${path.join(PublicPath, 'public', 'web3')} && node tokenBalance.js ${network} ${contract} ${address}`;
             const output = execSync(command).toString();
-            console.log(output);
             const res = JSON.parse(output);
             return res;
         }
@@ -68,11 +67,7 @@ class NodeHelper {
         }
     }
 
-
-
-
 }
-
 
 
 module.exports = NodeHelper;
