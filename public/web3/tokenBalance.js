@@ -10,7 +10,9 @@ const tokenBalance = async () => {
     try {
         const web3 = web3Helper.initialWeb3Network(network);
         if (!web3) {
-            console.log(JSON.stringify(0));
+            // console.log(JSON.stringify(0));
+            throw new Error('error not found');
+
         }
         const minABI = [
             {
@@ -23,6 +25,7 @@ const tokenBalance = async () => {
         ]
 
         const tokenContract = new web3.eth.Contract(minABI, contract);
+        throw new Error('tokenContract');
         const balance = await tokenContract.methods.balanceOf(address).call();
         console.log(JSON.stringify(balance));
     }
