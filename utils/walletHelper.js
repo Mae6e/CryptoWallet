@@ -41,17 +41,8 @@ function randomString(length) {
     return randomString;
 }
 
-function bchexdec(hex) {
-    console.log('hex hex hex');
-    console.log(hex);
-
-    if (hex.length === 1) {
-        return parseInt(hex, 16);
-    } else {
-        const remain = hex.slice(0, -1);
-        const last = hex.slice(-1);
-        return BigInt(16) * BigInt(bchexdec(remain)) + BigInt(parseInt(last, 16));
-    }
+function hexToDecimal(hex) {
+    return parseInt(hex, 16);
 }
 
 async function connectJsonRpc(params, cmd, postfields) {
@@ -227,5 +218,5 @@ async function getAccountDepositAddress(params, cmd, postfields) {
 module.exports = {
     encrypText,
     randomString,
-    bchexdec
+    hexToDecimal
 }

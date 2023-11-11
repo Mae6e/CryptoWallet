@@ -24,6 +24,8 @@ const {
     NetworkName,
     NetworkSymbol } = require('../utils');
 
+const { CurrencyType } = require('../utils/constants');
+
 const { randomString } = require('../utils/walletHelper');
 const { encryptText } = require('../utils/cryptoEngine');
 
@@ -182,28 +184,29 @@ class WalletAddressService {
                 secret: this.privateKey
             });
             const result = await coinPaymentsAPI.balances();
-            console.log(result);
             return 0;
         }
         else if (networkName.includes(NetworkName.RIPPLE)) {
-            if (symbol === NetworkSymbol.XRP) {
+            if (currency.type === CurrencyType.COIIN) {
+                console.log('hererer hererer');
+
                 const adminAddress = network.siteWallet.publicKey;
                 const balance = nodeHelper.getRippleBalance(adminAddress);
+                console.log(balance);
                 return Response.success({ balance, address: adminAddress });
             } else {
                 return Response.warn('Currently, do not support currency');
             }
         }
         else if (networkName.includes(NetworkName.TRC20)) {
-            if (symbol === NetworkSymbol.TRX) {
-                console.log("this is code");
+            if (currency.type === CurrencyType.COIIN) {
                 const adminAddress = network.siteWallet.publicKey;
                 const balance = nodeHelper.getTrc20Balance(adminAddress);
                 return Response.success({ balance, address: adminAddress });
             }
             else {
                 const adminAddress = network.siteWallet.publicKey;
-                const contract = currency.contractAddress;
+                const contract = currency.networks[0].contractAddress;
                 const tokenBal = nodeHelper.getTrc20TokenBalance(contract, adminAddress);
                 //TODO add unit in db - usdt
                 const balance = tokenBal / 1_000_000;
@@ -211,28 +214,18 @@ class WalletAddressService {
             }
         }
         else if (web3Network) {
-            console.log("web3 addressfdsfd");
-            if (symbol === NetworkSymbol.BNB ||
-                symbol === NetworkSymbol.ETH) {
+            if (currency.type === CurrencyType.COIIN) {
                 const adminAddress = network.siteWallet.publicKey;
-                console.log(adminAddress);
-
                 const getBalance = nodeHelper.getWeb3Balance(web3Network, adminAddress);
                 return Response.success({ balance: getBalance, address: adminAddress });
             }
-            // else {
-            //     const adminAddress = network.siteWallet.publicKey;
-            //     const contract = currency.contractAddress;
-            //     const decimalPoint = currency.decimalPoint;
-
-            //     const getDecimals = decimalPoint + 1;
-            //     const decimals = '1'.padEnd(getDecimals, '0');
-
-            //     const getBalance = nodeHelper.getWeb3TokenBalance(web3Network, adminAddress, contract);
-            //     const tokenBal = getBalance;
-            //     const balance = tokenBal / decimals;
-            //     return Response.success({ balance, address: adminAddress });
-            // }
+            else {
+                const adminAddress = network.siteWallet.publicKey;
+                const contract = currency.networks[0].contractAddress;
+                const getBalance = nodeHelper.getWeb3TokenBalance(web3Network, contract, adminAddress);
+                const balance = getBalance / 1000_000_000_000_000_000;
+                return Response.success({ balance, address: adminAddress });
+            }
         }
         else {
             return Response.warn('Invalid request');

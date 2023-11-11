@@ -17,9 +17,9 @@ async function tokenBalance() {
     const contractIns = await tronWeb.contract().at(contract);
     let result = await contractIns.balanceOf(address).call();
     console.log(JSON.stringify(result));
-    process.exit(-1);
-  } catch(error) {
+    //process.exit(-1);
+  } catch (error) {
     console.log(JSON.stringify([]));
-    process.exit(-1);
+    //process.exit(-1);
   }
 }
