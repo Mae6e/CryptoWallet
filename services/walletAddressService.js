@@ -190,7 +190,7 @@ class WalletAddressService {
             if (currency.type === CurrencyType.COIIN) {
 
                 const adminAddress = network.siteWallet.publicKey;
-                const balance = await nodeHelper.getRippleBalance(adminAddress);
+                const balance = nodeHelper.getRippleBalance(adminAddress);
                 return Response.success({ balance, address: adminAddress });
             } else {
                 return Response.warn('Currently, do not support currency');

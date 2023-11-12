@@ -6,36 +6,16 @@ const Ripple = new RippleAPI({
 });
 
 Ripple.on('error', function (errorCode, errorMessage) {
-	console.log('{"status":0,"msg":"Unable to withdraw, problem occured. ' + errorMessage + '."}');
+	console.error(errorMessage);
 });
 
-Ripple.on('connected', function () {
-	// console.log('connected');process.exit(-1);
-});
-
-Ripple.on('disconnected', function (code) {
-	console.log('disconnected, code:', code);
-});
-
-// Ripple.connect().then(function () {
-// 	return Ripple.getServerInfo();
-// }).then(function (server_info) {
-
-// 	Ripple.getBalances(adminaddress).then(function (transaction) {
-// 		console.log(JSON.stringify(transaction, null, 2));
-// 		//process.exit(-1);
-// 	}).catch(console.error);
-// }).catch(console.error);
-
-
-async function getBalances() {
+const getBalances = async () => {
 	try {
 		await Ripple.connect();
 
 		//? Get the balances for the specified address
-		const balances = await api.getBalances(address);
-		console.log(balances);
-		const balancesJSON = JSON.stringify(balances, null, 2);
+		const balances = await Ripple.getBalances(address);
+		const balancesJSON = JSON.stringify(balances);
 		await Ripple.disconnect();
 		console.log(balancesJSON);
 	} catch (error) {
