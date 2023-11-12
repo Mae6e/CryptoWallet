@@ -1,6 +1,10 @@
 const path = require('path');
-const { execSync } = require('child_process');
+const util = require('util');
+
+const { execSync, exec } = require('child_process');
 const { PublicPath } = require('../index');
+
+const execAsync = util.promisify(require('child_process').exec);
 
 //? utils
 const { hexToDecimal } = require('../utils/walletHelper');
@@ -8,11 +12,13 @@ const { NetworkSymbol } = require('../utils/index');
 
 class NodeHelper {
 
-    getRippleBalance = (address) => {
+    getRippleBalance = async (address) => {
         let value = 0;
         const command = `cd ${path.join(PublicPath, 'public', 'ripple')} && node ripple_balance.js ${address}`;
-        const output = execSync(command).toString();
 
+        console.log(command);
+        const output = await execAsync(command).toString();
+        console.log("ttttoken");
         console.log(output);
 
         if (!output) return value;
