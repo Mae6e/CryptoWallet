@@ -199,16 +199,15 @@ class WalletAddressService {
         else if (networkName.includes(NetworkName.TRC20)) {
             if (currency.type === CurrencyType.COIIN) {
                 const adminAddress = network.siteWallet.publicKey;
-                const balance = nodeHelper.getTrc20Balance(adminAddress);
+                const { decimalPoint } = currency.networks[0];
+                const balance = nodeHelper.getTrc20Balance(adminAddress, decimalPoint);
                 return Response.success({ balance, address: adminAddress });
             }
             else {
                 const adminAddress = network.siteWallet.publicKey;
-                const contract = currency.networks[0].contractAddress;
-                const tokenBal = nodeHelper.getTrc20TokenBalance(contract, adminAddress);
-                //TODO add unit in db - usdt
-                const balance = tokenBal / 1_000_000;
-                return Response.success({ balance, address: adminAddress });
+                const { contractAddress, decimalPoint } = currency.networks[0];
+                const tokenBal = nodeHelper.getTrc20TokenBalance(contractAddress, adminAddress, decimalPoint);
+                return Response.success({ balance: tokenBal, address: adminAddress });
             }
         }
         else if (web3Network) {
@@ -219,10 +218,9 @@ class WalletAddressService {
             }
             else {
                 const adminAddress = network.siteWallet.publicKey;
-                const contract = currency.networks[0].contractAddress;
-                const getBalance = nodeHelper.getWeb3TokenBalance(web3Network, contract, adminAddress);
-                const balance = getBalance / 1000_000_000_000_000_000;
-                return Response.success({ balance, address: adminAddress });
+                const { contractAddress, decimalPoint } = currency.networks[0];
+                const getBalance = nodeHelper.getWeb3TokenBalance(web3Network, contractAddress, adminAddress, decimalPoint);
+                return Response.success({ balance: getBalance, address: adminAddress });
             }
         }
         else {

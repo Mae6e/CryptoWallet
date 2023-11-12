@@ -21,22 +21,22 @@ class NodeHelper {
         return value;
     }
 
-    getTrc20Balance = (address) => {
+    getTrc20Balance = (address, decimalPoint) => {
         const command = `cd ${path.join(PublicPath, 'public', 'tron')} && node balance.js ${address}`;
         const output = execSync(command).toString();
         const res = JSON.parse(output);
         //Logger.debug(`CheckTrxBalance ${addr} response ${JSON.stringify(output)}`);
-        return res / 1000000;
+        return res / Math.pow(10, decimalPoint);
     }
 
-    getTrc20TokenBalance = (contract, address) => {
+    getTrc20TokenBalance = (contract, address, decimalPoint) => {
         const command = `cd ${path.join(PublicPath, 'public', 'tron')} && node trcBalance.js ${contract} ${address}`;
         const output = execSync(command).toString();
         const res = JSON.parse(output);
 
         if (res && typeof res === 'object') {
             if (res.hex) {
-                return hexToDecimal(res.hex);
+                return hexToDecimal(res.hex) / Math.pow(10, decimalPoint);
             }
         }
         return 0;
@@ -55,9 +55,9 @@ class NodeHelper {
         }
     }
 
-    getWeb3TokenBalance = (network, contract, address) => {
+    getWeb3TokenBalance = (network, contract, address, decimalPoint) => {
         try {
-            const command = `cd ${path.join(PublicPath, 'public', 'web3')} && node tokenBalance.js ${network} ${contract} ${address}`;
+            const command = `cd ${path.join(PublicPath, 'public', 'web3')} && node tokenBalance.js ${network} ${contract} ${address} ${decimalPoint}`;
             const output = execSync(command).toString();
             const res = JSON.parse(output);
             return res;
