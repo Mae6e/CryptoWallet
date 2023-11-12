@@ -11,12 +11,12 @@ Ripple.on('error', function (errorCode, errorMessage) {
 });
 
 Ripple.on('connected', function () {
-	console.log('connected');
+	//console.log('connected');
 	// console.log('connected');process.exit(-1);
 });
 
 Ripple.on('disconnected', function (code) {
-	console.log('disconnected, code:', code);
+	//console.log('disconnected, code:', code);
 });
 
 Ripple.connect().then(function () {
