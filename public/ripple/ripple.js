@@ -1,6 +1,4 @@
-console.log('entereds');
 const RippleAPI = require('ripple-lib').RippleAPI;
-console.log('connecteds');
 
 var type = process.argv[2];
 const Ripple = new RippleAPI({ server: 'wss://s2.ripple.com' });

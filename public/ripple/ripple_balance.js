@@ -6,17 +6,15 @@ const Ripple = new RippleAPI({
 });
 
 Ripple.on('error', function (errorCode, errorMessage) {
-	console.log(errorMessage);
-	//('{"status":0,"msg":"Unable to withdraw, problem occured. ' + errorMessage + '."}');
+	console.log('{"status":0,"msg":"Unable to withdraw, problem occured. ' + errorMessage + '."}');
 });
 
 Ripple.on('connected', function () {
-	//console.log('connected');
 	// console.log('connected');process.exit(-1);
 });
 
 Ripple.on('disconnected', function (code) {
-	//console.log('disconnected, code:', code);
+	console.log('disconnected, code:', code);
 });
 
 Ripple.connect().then(function () {

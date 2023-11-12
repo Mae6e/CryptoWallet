@@ -10,7 +10,9 @@ class NodeHelper {
 
     getRippleBalance = (address) => {
         let value = 0;
-        const output = execSync(`cd ${path.join(PublicPath, 'public', 'ripple')} && node ripple_balance.js "${address}"`);
+        const command = `cd ${path.join(PublicPath, 'public', 'ripple')} && node ripple_balance.js ${address}`;
+        const output = execSync(command).toString();
+
         console.log(output);
 
         if (!output) return value;
