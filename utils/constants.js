@@ -46,5 +46,15 @@ exports.FeeType = {
     PERCENT: "percent"
 }
 
-
+exports.NetworkType = {
+    BITCOIN: 1,
+    LITECOIN: 2,
+    DOGECOIN: 3,
+    ERC20: 4,
+    TRC20: 5,
+    BSC: 6,
+    RIPPLE: 7,
+    ARBITRUM: 8,
+    POLYGON: 9
+}
 

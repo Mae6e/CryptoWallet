@@ -1,21 +1,21 @@
 
 const { Web3 } = require('web3');
-const { NetworkName } = require('./index');
+const { NetworkType } = require('./constants');
 
 class Web3helper {
 
     initialWeb3Network(network) {
         //? MainNet
-        if (network === NetworkName.BSC) {
+        if (network == NetworkType.BSC) {
             return new Web3(process.env.RPC_ENDPOINT_BSC);
         }
-        else if (network === NetworkName.ERC20) {
+        else if (network == NetworkType.ERC20) {
             return new Web3(process.env.RPC_ENDPOINT_ERC20);
         }
-        else if (network === NetworkName.ARBITRUM) {
+        else if (network == NetworkType.ARBITRUM) {
             return new Web3(process.env.RPC_ENDPOINT_ARBITRUM);
         }
-        else if (network === NetworkName.POLYGON) {
+        else if (network == NetworkType.POLYGON) {
             return new Web3(process.env.RPC_ENDPOINT_POLYGON);
         }
     }
@@ -28,6 +28,7 @@ class Web3helper {
 
             const tokenContract = new web3.eth.Contract(tokenAbi, contract);
             const decimals = await tokenContract.methods.decimals().call();
+
             return decimals;
         }
         catch (error) {

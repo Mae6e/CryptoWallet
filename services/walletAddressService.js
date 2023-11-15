@@ -20,11 +20,10 @@ const {
     CoinPaymentPublicKey,
     XRPAddress,
     CoinpaymentCurrencies,
-    Web3Networks,
-    NetworkName,
-    NetworkSymbol } = require('../utils');
+    Web3Networks
+} = require('../utils');
 
-const { CurrencyType } = require('../utils/constants');
+const { CurrencyType, NetworkType } = require('../utils/constants');
 
 const { randomString } = require('../utils/walletHelper');
 const { encryptText } = require('../utils/cryptoEngine');
@@ -37,10 +36,12 @@ class WalletAddressService {
         this.publicKey = CoinPaymentPublicKey;
     }
 
-    getWeb3Network = (networkName) => {
-        for (const key of Web3Networks) {
-            if (networkName.includes(key)) {
-                return key;
+    getWeb3Network = (networkType) => {
+        const [key, value] = Object.entries(NetworkType)
+            .find(([key, value]) => value == networkType) || [];
+        for (const network of Web3Networks) {
+            if (key === network) {
+                return value;
             }
         }
         return undefined;
@@ -77,16 +78,15 @@ class WalletAddressService {
     }
 
     generateAddress = async (data) => {
-        let { networkSymbol, networkName } = data;
+        let { networkSymbol, networkType } = data;
 
-        if (!networkSymbol || !networkName) {
+        if (!networkSymbol || !networkType) {
             return Response.warn('Please Enter Network Information');
         }
 
-        let web3Network;
-        if (networkName) {
-            networkName = networkName.toUpperCase();
-            web3Network = this.getWeb3Network(networkName);
+        let web3NetworkType;
+        if (networkType) {
+            web3NetworkType = this.getWeb3Network(networkType);
         }
 
         if (CoinpaymentCurrencies.includes(networkSymbol)) {
@@ -102,13 +102,13 @@ class WalletAddressService {
             const address = result.address;
             return Response.success({ address, tag: '', secret: '', public: '' });
         }
-        else if (networkName.includes(NetworkName.RIPPLE)) {
+        else if (networkType == NetworkType.RIPPLE) {
             //? Ripple network
             const address = XRPAddress;
             const tag = await this.generateXRPTag(8);
             return Response.success({ address, tag, secret: '', public: '' });
         }
-        else if (networkName.includes(NetworkName.TRC20)) {
+        else if (networkType == NetworkType.TRC20) {
             //? Assuming address.js is located in the 'tron' folder
             const output = execSync('cd ' + path.join(PublicPath, 'public', 'tron') + ' && node address.js').toString();
 
@@ -129,9 +129,10 @@ class WalletAddressService {
             }
             return Response.warn('Currently, Can not get address');
         }
-        else if (web3Network) {
+        else if (web3NetworkType) {
             //? Assuming address.js is located in the 'bep' folder
-            const output = execSync('cd ' + path.join(PublicPath, 'public', 'web3') + ` && node address.js ${web3Network}`).toString();
+            const command = 'cd ' + path.join(PublicPath, 'public', 'web3') + ` && node address.js ${web3NetworkType}`;
+            const output = execSync(command).toString();
             console.log(output);
 
             if (!output)
@@ -157,12 +158,12 @@ class WalletAddressService {
 
     getSiteWalletBalance = async (data) => {
 
-        let { symbol, networkName } = data;
-        if (!symbol || !networkName) {
+        let { symbol, networkType } = data;
+        if (!symbol || !networkType) {
             return Response.warn('Please Enter Network and Currency Information');
         }
 
-        const network = await NetworkRepository.getNetworkByName(networkName);
+        const network = await NetworkRepository.getNetworkByType(networkType);
         if (!network) {
             return Response.warn('Invalid Network');
         }
@@ -172,10 +173,9 @@ class WalletAddressService {
             return Response.warn('Invalid Currency');
         }
 
-        let web3Network;
-        if (networkName) {
-            networkName = networkName.toUpperCase();
-            web3Network = this.getWeb3Network(networkName);
+        let web3NetworkType;
+        if (networkType) {
+            web3NetworkType = this.getWeb3Network(networkType);
         }
 
         if (CoinpaymentCurrencies.includes(symbol)) {
@@ -186,7 +186,7 @@ class WalletAddressService {
             const result = await coinPaymentsAPI.balances();
             return 0;
         }
-        else if (networkName.includes(NetworkName.RIPPLE)) {
+        else if (network.type == NetworkType.RIPPLE) {
             if (currency.type === CurrencyType.COIIN) {
 
                 const adminAddress = network.siteWallet.publicKey;
@@ -196,7 +196,7 @@ class WalletAddressService {
                 return Response.warn('Currently, do not support currency');
             }
         }
-        else if (networkName.includes(NetworkName.TRC20)) {
+        else if (network.type == NetworkType.TRC20) {
             if (currency.type === CurrencyType.COIIN) {
                 const adminAddress = network.siteWallet.publicKey;
                 const { decimalPoint } = currency.networks[0];
@@ -210,16 +210,16 @@ class WalletAddressService {
                 return Response.success({ balance: tokenBal, address: adminAddress });
             }
         }
-        else if (web3Network) {
+        else if (web3NetworkType) {
             if (currency.type === CurrencyType.COIIN) {
                 const adminAddress = network.siteWallet.publicKey;
-                const getBalance = nodeHelper.getWeb3Balance(web3Network, adminAddress);
+                const getBalance = nodeHelper.getWeb3Balance(web3NetworkType, adminAddress);
                 return Response.success({ balance: getBalance, address: adminAddress });
             }
             else {
                 const adminAddress = network.siteWallet.publicKey;
                 const { contractAddress, decimalPoint } = currency.networks[0];
-                const getBalance = nodeHelper.getWeb3TokenBalance(web3Network, contractAddress, adminAddress, decimalPoint);
+                const getBalance = nodeHelper.getWeb3TokenBalance(web3NetworkType, contractAddress, adminAddress, decimalPoint);
                 return Response.success({ balance: getBalance, address: adminAddress });
             }
         }

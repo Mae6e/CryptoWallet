@@ -21,16 +21,6 @@ exports.NetworkSymbol = {
     XRP: 'XRP'
 }
 
-exports.NetworkName = {
-    BITCOIN: 'BITCOIN',
-    LITECOIN: 'LITECOIN',
-    DOGECOIN: 'DOGECOIN',
-    ERC20: 'ERC20',
-    TRC20: 'TRC20',
-    BSC: 'BSC',
-    BEP2: 'BEP2',
-    RIPPLE: 'RIPPLE',
-    ARBITRUM: 'ARBITRUM',
-    POLYGON: 'POLYGON'
-}
+
+
 

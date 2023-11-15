@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-const { NetworkStatus } = require('../utils/constants');
+const { NetworkStatus, NetworkType } = require('../utils/constants');
 
 const networkSchema = new mongoose.Schema({
     name: {
@@ -23,6 +23,12 @@ const networkSchema = new mongoose.Schema({
         default: NetworkStatus.ACTIVE,
         index: true
     },
+    type: {
+        type: Number,
+        required: [true, 'The network must be have a type'],
+        enum: Object.values(NetworkType),
+        index: true
+    },
     instruction: {
         type: String,
         minLength: [10, 'The instruction must be above 10'],
@@ -35,7 +41,8 @@ const networkSchema = new mongoose.Schema({
         },
         publicKey: {
             type: String,
-            minLength: [5, 'The address must be above 5']
+            minLength: [5, 'The address must be above 5'],
+            default: 'This is a publick key'
         },
         blocknumber: {
             type: Number
