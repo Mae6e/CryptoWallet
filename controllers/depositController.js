@@ -1,16 +1,16 @@
 
 const catchAsync = require('../utils/catchAsync');
 
-const WalletAddressService = require('../services/walletAddressService');
-const walletAddressService = new WalletAddressService();
+const DepositService = require('../services/depositService');
+const depositService = new DepositService();
 
 
 class DepositController {
-    generateAddress = catchAsync(async (req, res) => {
+    updateWalletBalance = catchAsync(async (req, res) => {
         const data = req.body;
-        const response = await walletAddressService.generateAddress(data);
+        const response = await depositService.updateWalletBalance(data);
         return res.status(response.statusCode).json(response);
     });
 }
 
-module.exports = WalletAddressController;
+module.exports = DepositController;

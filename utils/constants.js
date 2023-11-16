@@ -58,3 +58,10 @@ exports.NetworkType = {
     POLYGON: 9
 }
 
+
+exports.DepositState = {
+    COMPLETED: 'completed'
+}
+exports.CryptoType = {
+    CRYPTO: 'crypto'
+}

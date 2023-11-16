@@ -158,8 +158,7 @@ let currencySchema = new mongoose.Schema({
             maxLength: [50, 'The contract address must be blew 50']
         },
         lastBlockNumber: {
-            type: Number,
-            default: 0,
+            type: Number
         },
         memoStatus: {
             type: Number,
