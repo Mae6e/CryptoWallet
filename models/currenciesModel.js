@@ -160,6 +160,9 @@ let currencySchema = new mongoose.Schema({
         lastBlockNumber: {
             type: Number
         },
+        lastExecutedAt: {
+            type: Date
+        },
         memoStatus: {
             type: Number,
             enum: Object.values(MemoStatus),
