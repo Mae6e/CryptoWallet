@@ -1,4 +1,3 @@
-
 const axios = require('axios');
 
 const NetworkRepository = require('../repositories/networkRepository');
@@ -11,12 +10,12 @@ const WltDepositsRepository = require('../repositories/wltDepositsRepository');
 const Response = require('../utils/response');
 
 //? utils
-const {
-    XRPAddress,
+const { XRPAddress,
     NetworkSymbol } = require('../utils');
 
 const { CurrencyType, NetworkType, DepositState, CryptoType } = require('../utils/constants');
 
+const logger = require('../logger')(module);
 
 class DepositService {
 
@@ -26,8 +25,6 @@ class DepositService {
         if (!symbol || !networkType) {
             return Response.warn('Please Enter Network and Currency Information');
         }
-
-        console.log(data);
 
         const network = await NetworkRepository.getNetworkByType(networkType);
         if (!network) {
@@ -39,8 +36,6 @@ class DepositService {
             return Response.warn('Invalid Currency');
         }
 
-        console.log(currency);
-
         let web3NetworkType;
         // if (networkType) {
         //     web3NetworkType = this.getWeb3Network(networkType);
@@ -49,7 +44,7 @@ class DepositService {
         if (network.type == NetworkType.RIPPLE) {
             if (currency.type === CurrencyType.COIIN) {
                 //! updateRippleWalletBalance
-                this.updateRippleWalletBalances(currency.networks[0].lastBlockNumber);
+                this.updateRippleWalletBalances(currency);
             } else {
                 //! noting
             }
@@ -77,32 +72,31 @@ class DepositService {
     }
 
     //? XRP-Deposit
-    updateRippleWalletBalances = async (lastblockNumber) => {
+    updateRippleWalletBalances = async (currency) => {
         try {
-            console.log(lastblockNumber);
-            const currency = NetworkSymbol.XRP;
-            const blockNumber = lastblockNumber > 0 ? lastblockNumber : "2022-09-12T00:00:00Z";
-            const url = `${process.env.EXPLORER_RIPPLE.replace('ADDRESS', XRPAddress)}${blockNumber}`;
+            //? currency info
+            const id = currency._id;
+            const lastblockNumber = currency.networks[0].lastblockNumber;
+            const lastExecutedAt = currency.networks[0].lastExecutedAt;
+            const network = currency.networks[0].network;
+            const symbol = currency.symbol;
+
+            let date;
+            if (lastExecutedAt) {
+                date = lastExecutedAt.toISOString();
+            }
+
+            const currentBlockDate = date || "2022-09-12T00:00:00Z";
+            const url = `${process.env.EXPLORER_RIPPLE.replace('ADDRESS', XRPAddress)}${currentBlockDate}`;
             //Logger.debug(`updateXrpBalance 1 => ${blockNumber} url ${url}`);
 
-            console.log(url);
 
             const response = await axios.get(url);
-            console.log("herererere");
-            console.log(response);
-
-            // const res = JSON.parse(response);
-            // console.log(response);
-
             if (!response || !response.data) {
                 return;
             }
 
             const { result, count, payments } = response.data;
-
-            console.log(result);
-            console.log(payments.length);
-
             if (result !== 'success' || count === 0) {
                 //! do someting
                 //Logger.error(`UpdateXrpBalance problem => ${JSON.stringify(res)}`);
@@ -114,34 +108,33 @@ class DepositService {
                 return;
             }
 
-            //const transactions = res.payments;
             // Logger.debug(`updateXrpBalance 2 success result count ${res.count}`);
 
-            //let sendSms = false;
             for (const transaction of payments) {
-                const amount = transaction.delivered_amount;
-                const address = transaction.destination;
-                const txid = transaction.tx_hash;
 
+                const address = transaction.destination;
                 //Logger.debug(`updateXrpBalance 3 trans = ${JSON.stringify(trans)}`);
 
-                if (!transaction.destination_tag && transaction.destination_tag === "") {
+                if (!transaction.destination_tag || transaction.destination_tag === "") {
                     continue;
                 }
 
-                const desTag = transaction.destination_tag.toString();
                 if (XRPAddress !== address) {
                     continue;
                 }
 
-                const { user_id } = await UserAddressRepository.getUserByTag(symbol, XRPAddress, desTag);
-                if (user_id) {
-                    const exeTime = transaction.executed_time;
+                const amount = transaction.delivered_amount;
+                const txid = transaction.tx_hash;
+                const desTag = transaction.destination_tag.toString();
+                const exeTime = transaction.executed_time;
+
+                const userAddressDocument = await UserAddressRepository.getUserByTag(symbol, XRPAddress, desTag);
+                if (userAddressDocument) {
                     const data =
                     {
                         txid,
-                        user_id,
-                        currency,
+                        user_id: userAddressDocument.user_id,
+                        currency: symbol,
                         amount,
                         payment_type: 'Ripple (XRP)',
                         status: DepositState.COMPLETED,
@@ -151,20 +144,21 @@ class DepositService {
                     await this.updateUserWallet(data);
                 }
                 else {
-                    const data = { txnid: txid, amount, currency };
-                    await this.updateUserWallet(data);
+                    const data = { txid, amount, currency: symbol };
+                    await this.updateAdminWallet(data);
                 }
+
+                //? update the block and date of executed
+                await CurrenciesRepository.updateLastStatusOfCurrency(id, network, lastblockNumber, exeTime);
             }
         }
         catch (error) {
-            console.log("error");
-
             console.log(error.message);
         }
     }
 
 
-    //? add user Deposit, update userWallet
+    //? add user Deposit, update userWallet 
     updateUserWallet = async (data) => {
         const { txid, user_id, currency, amount, payment_type, status, currency_type, exeTime } = data;
         const txnExists = await DepositRepository.checkExistsTxnId(txid, user_id, currency);
@@ -188,9 +182,12 @@ class DepositService {
         await DepositRepository.create(depositData);
 
         //? update user wallet
-        const balance = await UserWalletRepository.getUserBalance(user_id, currency);
-        const updateBal = balance + amount;
-        await UserWalletRepository.updateUserWallet({ user_id, currency, updateBal });
+        const userWallet = await UserWalletRepository.getUserBalance({ user: user_id, currency });
+        if (userWallet) {
+            const balance = userWallet[currency];
+            const updateBal = balance + parseFloat(amount);
+            await UserWalletRepository.updateUserWallet({ user: user_id, currency, amount: updateBal });
+        }
 
         //TODO SEND SMS
         return true;

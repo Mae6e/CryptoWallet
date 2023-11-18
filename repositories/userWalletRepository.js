@@ -6,5 +6,5 @@ exports.getUserBalance = async ({ user, currency }) => {
 }
 
 exports.updateUserWallet = async ({ user, currency, amount }) => {
-    return await wallet.updateOne({ user_id: user }, { $set: { [currency]: parseFloat(amount), updated_at: new Date() } });
+    return await UserWallet.updateOne({ user_id: user }, { $set: { [currency]: parseFloat(amount), updated_at: new Date() } });
 }
