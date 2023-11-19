@@ -10,13 +10,14 @@ const createLoggerBase = (levelItem) => {
     //? config winston log
     return createLogger({
         format: format.combine(
-            format.timestamp(),
+            format.timestamp({
+                format: 'YYYY-MM-DD HH:mm:ss'
+            }),
             format.errors({ stack: true }), //? save callstack when happen error
             format.printf((info) => { //? format of save data in log file
-                return `${info.level}: ${info.message} ${info.metaData} ${info.metaDataError} \n${info.stack || ''}`;
-            }),
-            format.splat(),
-            format.json()
+                const { timestamp, level, message, metaData, metaDataError, stack, pathFile } = info;
+                return `[${timestamp}] [${level.toUpperCase()}] [${path.basename(pathFile)}] : ${message} ${!metaData ? '' : `- MetaData: ${JSON.stringify(metaData)}`} ${!metaDataError ? '' : `- MetaDataError: ${JSON.stringify(metaDataError)}`} ${!stack ? '' : `- Stack: ${stack}`}`;
+            })
         ),
         statusLevels: true,
         transports: [

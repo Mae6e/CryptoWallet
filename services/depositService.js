@@ -32,7 +32,7 @@ class DepositService {
         }
 
         const currency = await CurrenciesRepository.getCurrencyBySymbol(symbol, network._id);
-        if (!currency) {
+        if (!currency || !currency.networks[0]) {
             return Response.warn('Invalid Currency');
         }
 
@@ -88,8 +88,7 @@ class DepositService {
 
             const currentBlockDate = date || "2022-09-12T00:00:00Z";
             const url = `${process.env.EXPLORER_RIPPLE.replace('ADDRESS', XRPAddress)}${currentBlockDate}`;
-            //Logger.debug(`updateXrpBalance 1 => ${blockNumber} url ${url}`);
-
+            logger.debug(`updateRippleWalletBalances|start`, { currentBlockDate, url });
 
             const response = await axios.get(url);
             if (!response || !response.data) {
@@ -98,27 +97,24 @@ class DepositService {
 
             const { result, count, payments } = response.data;
             if (result !== 'success' || count === 0) {
-                //! do someting
-                //Logger.error(`UpdateXrpBalance problem => ${JSON.stringify(res)}`);
+                logger.error(`updateRippleWalletBalances|problem`, { currentBlockDate, result });
                 return;
             }
 
             if (!payments || payments.length === 0) {
-                //! do something
+                logger.warn(`updateRippleWalletBalances|findData`, { currentBlockDate, payments: payments.length });
                 return;
             }
 
-            // Logger.debug(`updateXrpBalance 2 success result count ${res.count}`);
-
+            logger.debug(`updateRippleWalletBalances|success`, { currentBlockDate, count });
             for (const transaction of payments) {
 
-                const address = transaction.destination;
-                //Logger.debug(`updateXrpBalance 3 trans = ${JSON.stringify(trans)}`);
+                logger.debug(`updateRippleWalletBalances|transactions`, { currentBlockDate, transaction });
 
+                const address = transaction.destination;
                 if (!transaction.destination_tag || transaction.destination_tag === "") {
                     continue;
                 }
-
                 if (XRPAddress !== address) {
                     continue;
                 }
@@ -150,10 +146,11 @@ class DepositService {
 
                 //? update the block and date of executed
                 await CurrenciesRepository.updateLastStatusOfCurrency(id, network, lastblockNumber, exeTime);
+                logger.info(`updateRippleWalletBalances|changeBlockState`, { network, currentBlockDate, exeTime });
             }
         }
         catch (error) {
-            console.log(error.message);
+            logger.error(`updateRippleWalletBalances|exception`, { currency }, error);
         }
     }
 
