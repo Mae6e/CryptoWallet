@@ -214,6 +214,7 @@ class DepositService {
 
                     if (transactionValue['owner_address']) {
                         const ownerAddress = transactionValue['owner_address'].toUpperCase();
+                        //TODO hex value
                         if (ownerAddress === config('common.TRX.hex')) {
                             ins = 0;
                         }
@@ -237,13 +238,18 @@ class DepositService {
                 }
             }
 
+            //TODO check
+            if (blockNumber > 0) {
+                //update last block number
+            }
+
             if (recipientAddresses.length === 0) {
                 return;
             }
 
             logger.debug("Deposits deposit TRx !empty(toAddr)");
 
-            const userAddressDocuments = await UserAddressRepository.getCoinAddressesByTagAndCurrency(recipientAddresses);
+            const userAddressDocuments = await UserAddressRepository.getCoinAddressesByTagAndCurrency(symbol, recipientAddresses);
             if (userAddressDocuments.length === 0) {
                 return;
             }
@@ -253,39 +259,31 @@ class DepositService {
             for (const userAddress of userAddressDocuments) {
                 const userId = userAddress.user_id;
 
-                const trxAddresses = userAddress.filter(item => item.address.currency === "TRX");
-                if (trxAddresses.length === 0) {
+                const trxAddress = userAddress.filter(item => item.address.currency === "TRX");
+                if (trxAddress.length === 0) {
                     continue;
                 }
 
-                const addrVal = Object.values(trxAddresses)[0];
-                const account = addrVal.value.trim();
-                const tag = addrVal.tag.trim();
-                const transactions = depos[tag] || [];
+                const addressValue = Object.values(trxAddress)[0];
+                const account = addressValue.value.trim();
+                const tag = addressValue.tag.trim();
+                const transactions = depositTransactions[tag] || [];
 
-                for (const transaction of getDeposits(trxAddresses)) {
-                    const trxBal = parseFloat(transaction.amount);
+                for (const transaction of transactions) {
+                    const trxBalance = parseFloat(transaction.amount);
 
-                    if (trxBal <= 0.1) {
+                    if (trxBalance <= 0.1) {
                         continue;
                     }
 
                     const block = transaction.block;
                     const txid = transaction.txid;
-                    const txnExists = await checkTransactionExists(txid, userId, currency);
-
-                    if (txnExists !== 'true') {
-                        continue;
-                    }
-
-                    const balance = await getUserBalance(userId, currency);
-                    const updateBal = balance + trxBal;
 
                     const data = {
                         txid,
                         user_id: userId,
                         currency: symbol,
-                        amount: trxBal,
+                        amount: trxBalance,
                         payment_type: 'Tron (TRX)',
                         status: DepositState.COMPLETED,
                         currency_type: CryptoType.CRYPTO,
@@ -294,8 +292,6 @@ class DepositService {
                     };
                     await this.updateUserWallet(data);
                     logger.info("Deposits  516 create new deposit trx " + JSON.stringify(data));
-
-
                 }
             }
         }
