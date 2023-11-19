@@ -1,4 +1,5 @@
 const path = require('path');
+const axios = require('axios');
 
 const { execSync } = require('child_process');
 const { PublicPath } = require('../index');
@@ -69,6 +70,23 @@ class NodeHelper {
         }
     }
 
+
+    getTrc20BlockTransactions = async (start, end) => {
+        const blocks = { startNum: start, endNum: end };
+        const range = JSON.stringify(blocks);
+        try {
+            const response = await axios.post(process.env.EXPLORER_TRC20, range, {
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            });
+            return response.data;
+        } catch (error) {
+            console.error('Error:', error.message);
+            return [];
+        }
+    }
 }
 
 

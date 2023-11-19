@@ -12,5 +12,16 @@ exports.getUserByTag = async (currency, address, tag) => {
         .findOne({ address: { $elemMatch: { value: address, currency, tag } } }, { user_id: 1 });
 }
 
+exports.getCoinAddressesByTagAndCurrency = async (currency, tags) => {
+    return await UserAddress.find({
+        address: {
+            $elemMatch: {
+                tag: { $in: tags },
+                currency: currency
+            }
+        }
+    }).select('user_id address').lean();
+}
+
 
 

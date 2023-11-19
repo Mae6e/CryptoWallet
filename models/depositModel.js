@@ -20,7 +20,8 @@ let depositSchema = new mongoose.Schema({
   "move_status": { type: Number, default: 0 },
   "admin_id": { type: String, default: "" },
   "with_otp": { type: String, index: true },
-  "block": Date,
+  "block": Number,
+  "executedAt": Date,
   "created_at": { type: Date, default: Date.now },
   "updated_at": { type: Date, default: Date.now }
 }, { "versionKey": false });
