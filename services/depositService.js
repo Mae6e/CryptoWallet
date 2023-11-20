@@ -165,6 +165,8 @@ class DepositService {
             let startBlockNumber = currency.networks[0].lastblockNumber;
             const network = currency.networks[0].network;
             const symbol = currency.symbol;
+            const adminPublicKey = currency.networks[0].adminWallet.publicKey;
+            const decimalPoint = currency.networks[0].decimalPoint;
 
             if (!startBlockNumber) startBlockNumber = 0;
 
@@ -206,35 +208,60 @@ class DepositService {
                     const txid = transaction['txID'];
                     const transactionValue = transaction['raw_data']['contract'][0]['parameter']['value'];
 
-                    if (!transactionValue['amount'] || transactionValue['asset_name']) {
-                        continue;
+                    //? trx in trc20 network-deposit
+                    if (transactionValue['amount'] && !transactionValue['asset_name']) {
+                        let ins = 1;
+
+                        if (transactionValue['owner_address']) {
+                            const ownerAddress = transactionValue['owner_address'].toUpperCase();
+                            if (ownerAddress === tronHelper.toHex(adminPublicKey)) {
+                                ins = 0;
+                            }
+                        }
+
+                        if (ins !== 1) {
+                            continue;
+                        }
+
+                        const tronAmount = transactionValue['amount'] / Math.pow(10, decimalPoint);
+                        const amount = tronAmount.toFixed(8);
+                        if (amount <= 0.001) {
+                            continue;
+                        }
+
+                        const to = transactionValue['to_address'].toUpperCase();
+                        const transactionAddress = { txid: txid, amount: amount, block: blockNumber };
+                        depositTransactions[to] = depositTransactions[to] || [];
+                        depositTransactions[to].push(transactionAddress);
+                        recipientAddresses.push(to);
+
+                        //? logger
+                        console.log(depositTransactions);
+                        console.log(recipientAddresses);
                     }
 
-                    let ins = 1;
-
-                    if (transactionValue['owner_address']) {
-                        const ownerAddress = transactionValue['owner_address'].toUpperCase();
-                        //TODO hex value
-                        if (ownerAddress === config('common.TRX.hex')) {
-                            ins = 0;
+                    //? trc20 token-deposit
+                    if (transactionValue['data'] && transactionValue['contract_address']) {
+                        //? convert contract to hex value
+                        const contract_hexValue = tronHelper.toHex(adminPublicKey);
+                        if (transactionValue['contract_address'] === contract_hexValue) {
+                            const data = transactionValue.data;
+                            const txdata = data.substr(8);
+                            let to = txdata.substr(0, 64).substring(22).toUpperCase();
+                            to = "41" + to.substr(2);
+                            const balData = parseInt(txdata.substr(64), 16);
+                            const amt = balData / 1000000;
+                            const amount = parseFloat(amt.toFixed(8));
+                            const transArress = { txid: txid, amount: amount, block: blkNum };
+                            depositTransactions[to] = depositTransactions[to] || [];
+                            depositTransactions[to].push(transAddress);
+                            recipientAddresses.push(to);
+                            //? logger
+                            console.log(depositTransactions);
+                            console.log(recipientAddresses);
                         }
                     }
 
-                    if (ins !== 1) {
-                        continue;
-                    }
-
-                    const amt = transactionValue['amount'] / 1000000;
-                    const amount = amt.toFixed(8);
-                    if (amount <= 0.001) {
-                        continue;
-                    }
-
-                    const to = transactionValue['to_address'].toUpperCase();
-                    const transactionAddress = { txid: txid, amount: amount, block: blockNumber };
-                    depositTransactions[to] = depositTransactions[to] || [];
-                    depositTransactions[to].push(transactionAddress);
-                    recipientAddresses.push(to);
                 }
             }
 
@@ -270,9 +297,9 @@ class DepositService {
                 const transactions = depositTransactions[tag] || [];
 
                 for (const transaction of transactions) {
-                    const trxBalance = parseFloat(transaction.amount);
+                    const trxAmount = parseFloat(transaction.amount);
 
-                    if (trxBalance <= 0.1) {
+                    if (trxAmount <= 0.1) {
                         continue;
                     }
 
@@ -283,7 +310,7 @@ class DepositService {
                         txid,
                         user_id: userId,
                         currency: symbol,
-                        amount: trxBalance,
+                        amount: trxAmount,
                         payment_type: 'Tron (TRX)',
                         status: DepositState.COMPLETED,
                         currency_type: CryptoType.CRYPTO,
@@ -299,7 +326,6 @@ class DepositService {
             logger.error(`updateRippleWalletBalances|exception`, { currency }, error);
         }
     }
-
 
     //? add user Deposit, update userWallet 
     updateUserWallet = async (data) => {

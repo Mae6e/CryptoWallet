@@ -10,6 +10,8 @@ exports.getCurrencyBySymbol = async (symbol, network) => {
             "networks.decimalPoint": 1,
             "networks.lastBlockNumber": 1,
             "networks.lastExecutedAt": 1,
+            "networks.lastExecutedAt": 1,
+            "networks.adminWallet.publicKey": 1,
             type: 1,
             symbol: 1
         });
