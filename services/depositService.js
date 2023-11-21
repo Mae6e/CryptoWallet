@@ -18,6 +18,9 @@ const { CurrencyType, NetworkType, DepositState, CryptoType } = require('../util
 const NodeHelper = require('../utils/nodeHelper');
 const nodeHelper = new NodeHelper();
 
+const TronHelper = require('../utils/tronHelper');
+const tronHelper = new TronHelper();
+
 const logger = require('../logger')(module);
 
 class DepositService {
@@ -162,16 +165,32 @@ class DepositService {
         try {
             //? currency info
             const id = currency._id;
-            let startBlockNumber = currency.networks[0].lastblockNumber;
+            let startBlockNumber = currency.networks[0].lastBlockNumber;
             const network = currency.networks[0].network;
             const symbol = currency.symbol;
             const adminPublicKey = currency.networks[0].adminWallet.publicKey;
             const decimalPoint = currency.networks[0].decimalPoint;
 
-            if (!startBlockNumber) startBlockNumber = 0;
+            //? get all tokens in trc20 networks
+            const tokenDocuments = await CurrenciesRepository.getAllTokensByNetwork(network);
+
+            //? format tokens data and get hex value 
+            let tokens = [];
+            if (tokenDocuments.length > 0) {
+                tokens = [...tokenDocuments].map(obj => ({
+                    type: obj.type,
+                    symbol: obj.symbol,
+                    network: {
+                        decimalPoint: obj.networks[0].decimalPoint,
+                        contractAddressHex: tronHelper.toHex(obj.networks[0].contractAddress)
+                    }
+                }));
+            }
+
+            if (!startBlockNumber) startBlockNumber = 10000000;
 
             const endBlockNumber = startBlockNumber + 100;
-            logger.debug("Deposits updateTrxWalletsBalance updateTrx  start = {$start} end = {$end} ");
+            logger.debug(`Deposits updateTrxWalletsBalance updateTrx  start = ${startBlockNumber} end = ${endBlockNumber} `);
 
             const result = await nodeHelper.getTrc20BlockTransactions(startBlockNumber, endBlockNumber);
 
@@ -208,10 +227,9 @@ class DepositService {
                     const txid = transaction['txID'];
                     const transactionValue = transaction['raw_data']['contract'][0]['parameter']['value'];
 
-                    //? trx in trc20 network-deposit
+                    // //? trx in trc20 network-deposit
                     if (transactionValue['amount'] && !transactionValue['asset_name']) {
                         let ins = 1;
-
                         if (transactionValue['owner_address']) {
                             const ownerAddress = transactionValue['owner_address'].toUpperCase();
                             if (ownerAddress === tronHelper.toHex(adminPublicKey)) {
@@ -242,33 +260,36 @@ class DepositService {
 
                     //? trc20 token-deposit
                     if (transactionValue['data'] && transactionValue['contract_address']) {
-                        //? convert contract to hex value
-                        const contract_hexValue = tronHelper.toHex(adminPublicKey);
-                        if (transactionValue['contract_address'] === contract_hexValue) {
-                            const data = transactionValue.data;
-                            const txdata = data.substr(8);
-                            let to = txdata.substr(0, 64).substring(22).toUpperCase();
-                            to = "41" + to.substr(2);
-                            const balData = parseInt(txdata.substr(64), 16);
-                            const amt = balData / 1000000;
-                            const amount = parseFloat(amt.toFixed(8));
-                            const transArress = { txid: txid, amount: amount, block: blkNum };
-                            depositTransactions[to] = depositTransactions[to] || [];
-                            depositTransactions[to].push(transAddress);
-                            recipientAddresses.push(to);
-                            //? logger
-                            console.log(depositTransactions);
-                            console.log(recipientAddresses);
+                        const contractAddress_Tx = transactionValue['contract_address'];
+                        const token = tokens.find(x => x.network.contractAddressHex === contractAddress_Tx);
+                        if (token) {
+                            console.log(token);
+                            console.log(transactionValue);
+
+                            // const data = transactionValue.data;
+                            // const txdata = data.substr(8);
+                            // let to = txdata.substr(0, 64).substring(22).toUpperCase();
+                            // to = "41" + to.substr(2);
+                            // const balData = parseInt(txdata.substr(64), 16);
+                            // const amt = balData / token.decimalPoint;
+                            // const amount = parseFloat(amt.toFixed(8));
+                            // const transArress = { txid: txid, amount: amount, block: blkNum };
+                            // depositTransactions[to] = depositTransactions[to] || [];
+                            // depositTransactions[to].push(transAddress);
+                            // recipientAddresses.push(to);
+                            // //? logger
+                            // console.log(depositTransactions);
+                            // console.log(recipientAddresses);
+
                         }
                     }
-
                 }
             }
 
             //TODO check
-            if (blockNumber > 0) {
-                //update last block number
-            }
+            // if (blockNumber > 0) {
+            //     //update last block number
+            // }
 
             if (recipientAddresses.length === 0) {
                 return;

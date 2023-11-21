@@ -1,4 +1,6 @@
 
+const { CurrencyType } = require('../utils/constants');
+
 //? models
 const Currencies = require('../models/currenciesModel');
 
@@ -10,12 +12,29 @@ exports.getCurrencyBySymbol = async (symbol, network) => {
             "networks.decimalPoint": 1,
             "networks.lastBlockNumber": 1,
             "networks.lastExecutedAt": 1,
-            "networks.lastExecutedAt": 1,
             "networks.adminWallet.publicKey": 1,
             type: 1,
             symbol: 1
         });
 }
+
+
+exports.getAllTokensByNetwork = async (network) => {
+    return await Currencies.find({
+        type: CurrencyType.TOKEN, networks: {
+            $elemMatch: {
+                network: network
+            }
+        }
+    },
+        {
+            type: 1,
+            symbol: 1,
+            "networks.contractAddress": 1,
+            "networks.decimalPoint": 1
+        });
+}
+
 
 
 exports.updateLastStatusOfCurrency = async (id, network, lastBlockNumber, lastExecutedAt) => {
