@@ -78,11 +78,13 @@ class NodeHelper {
             const response = await axios.post(process.env.EXPLORER_TRC20, range, {
                 headers: {
                     'Accept': 'application/json',
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'TRON-PRO-API-KEY': 'f932afe9-5018-4960-bf4a-65e0ae9c35cf'
                 }
             });
             return response.data;
         } catch (error) {
+            //console.log(error);
             console.error('Error:', error.message);
             return [];
         }

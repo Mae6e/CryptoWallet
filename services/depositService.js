@@ -166,9 +166,9 @@ class DepositService {
             //? currency info
             const id = currency._id;
             let startBlockNumber = currency.networks[0].lastBlockNumber;
-            const network = currency.networks[0].network;
+            const network = currency.networks[0].network._id;
             const symbol = currency.symbol;
-            const adminPublicKey = currency.networks[0].adminWallet.publicKey;
+            const sitePublicKey = currency.networks[0].network.siteWallet.publicKey;
             const decimalPoint = currency.networks[0].decimalPoint;
 
             //? get all tokens in trc20 networks
@@ -187,9 +187,9 @@ class DepositService {
                 }));
             }
 
-            if (!startBlockNumber) startBlockNumber = 10000000;
+            if (!startBlockNumber) startBlockNumber = 20000000;
 
-            const endBlockNumber = startBlockNumber + 100;
+            const endBlockNumber = startBlockNumber + 2;
             logger.debug(`Deposits updateTrxWalletsBalance updateTrx  start = ${startBlockNumber} end = ${endBlockNumber} `);
 
             const result = await nodeHelper.getTrc20BlockTransactions(startBlockNumber, endBlockNumber);
@@ -202,7 +202,8 @@ class DepositService {
 
             const blocks = result['block'];
             let recipientAddresses = [];
-            let depositTransactions = [];
+            //let depositTransactions = [];
+            const depositTransactions = new Map();
 
             //? find blocks
             for (const block of blocks) {
@@ -232,7 +233,7 @@ class DepositService {
                         let ins = 1;
                         if (transactionValue['owner_address']) {
                             const ownerAddress = transactionValue['owner_address'].toUpperCase();
-                            if (ownerAddress === tronHelper.toHex(adminPublicKey)) {
+                            if (ownerAddress === tronHelper.toHex(sitePublicKey)) {
                                 ins = 0;
                             }
                         }
@@ -249,13 +250,18 @@ class DepositService {
 
                         const to = transactionValue['to_address'].toUpperCase();
                         const transactionAddress = { txid: txid, amount: amount, block: blockNumber };
-                        depositTransactions[to] = depositTransactions[to] || [];
-                        depositTransactions[to].push(transactionAddress);
+                        //depositTransactions[to] = depositTransactions[to] || [];
+                        // depositTransactions[to].push(transactionAddress);
                         recipientAddresses.push(to);
+                        //console.log(depositTransactions[to]);
 
-                        //? logger
-                        console.log(depositTransactions);
-                        console.log(recipientAddresses);
+
+                        //? Check if the key exists in the Map
+                        if (depositTransactions.has(to)) {
+                            depositTransactions.get(to).push(transactionAddress);
+                        } else {
+                            depositTransactions.set(to, [transactionAddress]);
+                        }
                     }
 
                     //? trc20 token-deposit
@@ -263,27 +269,38 @@ class DepositService {
                         const contractAddress_Tx = transactionValue['contract_address'];
                         const token = tokens.find(x => x.network.contractAddressHex === contractAddress_Tx);
                         if (token) {
-                            console.log(token);
-                            console.log(transactionValue);
+                            const data = transactionValue.data;
+                            const txdata = data.substr(8);
+                            let to = txdata.substr(0, 64).substring(22).toUpperCase();
+                            to = "41" + to.substr(2);
+                            const balData = parseInt(txdata.substr(64), 16);
+                            const amt = balData / token.decimalPoint;
+                            const amount = parseFloat(amt.toFixed(8));
+                            const transAddress = { txid: txid, amount: amount, block: blockNumber };
+                            //depositTransactions[to] = depositTransactions[to] || [];
+                            //depositTransactions[to].push(transAddress);
+                            recipientAddresses.push(to);
 
-                            // const data = transactionValue.data;
-                            // const txdata = data.substr(8);
-                            // let to = txdata.substr(0, 64).substring(22).toUpperCase();
-                            // to = "41" + to.substr(2);
-                            // const balData = parseInt(txdata.substr(64), 16);
-                            // const amt = balData / token.decimalPoint;
-                            // const amount = parseFloat(amt.toFixed(8));
-                            // const transArress = { txid: txid, amount: amount, block: blkNum };
-                            // depositTransactions[to] = depositTransactions[to] || [];
-                            // depositTransactions[to].push(transAddress);
-                            // recipientAddresses.push(to);
-                            // //? logger
-                            // console.log(depositTransactions);
-                            // console.log(recipientAddresses);
-
+                            //? Check if the key exists in the Map
+                            if (depositTransactions.has(to)) {
+                                depositTransactions.get(to).push(transAddress);
+                            } else {
+                                depositTransactions.set(to, [transAddress]);
+                            }
                         }
                     }
                 }
+                // const response_Trc20 = [
+                //     '4143D6124D0776104111C3C1C970B1BCAF731A4B85': [
+                //         {
+                //             txid: '1a8ae496f1a14bc1f1e61d6db1a436e30f7469a0eeae9ac24d663be72d282f43',
+                //             amount: '10243.92572000',
+                //             block: 20000001
+                //         }
+                //     ]
+                // ];
+                console.log(depositTransactions);
+                logger.info("data", Object.fromEntries(depositTransactions));
             }
 
             //TODO check
@@ -304,44 +321,44 @@ class DepositService {
 
             logger.debug("Deposits 496 wallet DepositFounds chcek ...");
 
-            for (const userAddress of userAddressDocuments) {
-                const userId = userAddress.user_id;
+            // for (const userAddress of userAddressDocuments) {
+            //     const userId = userAddress.user_id;
 
-                const trxAddress = userAddress.filter(item => item.address.currency === "TRX");
-                if (trxAddress.length === 0) {
-                    continue;
-                }
+            //     const trxAddress = userAddress.filter(item => item.address.currency === "TRX");
+            //     if (trxAddress.length === 0) {
+            //         continue;
+            //     }
 
-                const addressValue = Object.values(trxAddress)[0];
-                const account = addressValue.value.trim();
-                const tag = addressValue.tag.trim();
-                const transactions = depositTransactions[tag] || [];
+            //     const addressValue = Object.values(trxAddress)[0];
+            //     const account = addressValue.value.trim();
+            //     const tag = addressValue.tag.trim();
+            //     const transactions = depositTransactions[tag] || [];
 
-                for (const transaction of transactions) {
-                    const trxAmount = parseFloat(transaction.amount);
+            //     for (const transaction of transactions) {
+            //         const trxAmount = parseFloat(transaction.amount);
 
-                    if (trxAmount <= 0.1) {
-                        continue;
-                    }
+            //         if (trxAmount <= 0.1) {
+            //             continue;
+            //         }
 
-                    const block = transaction.block;
-                    const txid = transaction.txid;
+            //         const block = transaction.block;
+            //         const txid = transaction.txid;
 
-                    const data = {
-                        txid,
-                        user_id: userId,
-                        currency: symbol,
-                        amount: trxAmount,
-                        payment_type: 'Tron (TRX)',
-                        status: DepositState.COMPLETED,
-                        currency_type: CryptoType.CRYPTO,
-                        address_info: account,
-                        block
-                    };
-                    await this.updateUserWallet(data);
-                    logger.info("Deposits  516 create new deposit trx " + JSON.stringify(data));
-                }
-            }
+            //         const data = {
+            //             txid,
+            //             user_id: userId,
+            //             currency: symbol,
+            //             amount: trxAmount,
+            //             payment_type: 'Tron (TRX)',
+            //             status: DepositState.COMPLETED,
+            //             currency_type: CryptoType.CRYPTO,
+            //             address_info: account,
+            //             block
+            //         };
+            //         await this.updateUserWallet(data);
+            //         logger.info("Deposits  516 create new deposit trx " + JSON.stringify(data));
+            //     }
+            // }
         }
         catch (error) {
             logger.error(`updateRippleWalletBalances|exception`, { currency }, error);
