@@ -8,6 +8,8 @@ const { PublicPath } = require('../index');
 const { hexToDecimal } = require('../utils/walletHelper');
 const { NetworkSymbol } = require('../utils/index');
 
+const { TronGridKey } = require('../utils');
+
 class NodeHelper {
 
     getRippleBalance = (address) => {
@@ -79,7 +81,7 @@ class NodeHelper {
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
-                    'TRON-PRO-API-KEY': 'f932afe9-5018-4960-bf4a-65e0ae9c35cf'
+                    'TRON-PRO-API-KEY': TronGridKey
                 }
             });
             return response.data;

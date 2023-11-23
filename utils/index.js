@@ -21,6 +21,7 @@ exports.NetworkSymbol = {
     XRP: 'XRP'
 }
 
+exports.TronGridKey = process.env.TRONGRID_APIKEY
 
 
 

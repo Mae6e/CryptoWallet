@@ -48,6 +48,12 @@ const networkSchema = new mongoose.Schema({
             type: Number
         }
     },
+    lastBlockNumber: {
+        type: Number
+    },
+    lastExecutedAt: {
+        type: Date
+    },
     isDelete: { type: Boolean },
     deleted_at: { type: Date },
     created_at: { type: Date, default: Date.now },
