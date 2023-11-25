@@ -172,6 +172,10 @@ class DepositService {
             const sitePublicKey = currency.networks[0].network.siteWallet.publicKey;
             const decimalPoint = currency.networks[0].decimalPoint;
 
+            const sitePublicKeyHex = tronHelper.toHex(sitePublicKey).toUpperCase();
+
+            logger.info(`updateTrc20WalletBalances|currency information`, currency);
+
             //? get all tokens in trc20 networks
             const tokenDocuments = await CurrenciesRepository.getAllTokensByNetwork(network);
 
@@ -188,26 +192,25 @@ class DepositService {
                 }));
             }
 
-            if (!startBlockNumber) startBlockNumber = 50000000;
+            logger.info(`updateTrc20WalletBalances|tokens information`, tokens);
 
+            if (!startBlockNumber) startBlockNumber = 50000000;
             const endBlockNumber = startBlockNumber + 100;
-            logger.debug(`Deposits updateTrxWalletsBalance updateTrx  start = ${startBlockNumber} end = ${endBlockNumber} `);
+            logger.debug(`updateTrc20WalletBalances|start`, { startBlockNumber, endBlockNumber });
 
             const result = await nodeHelper.getTrc20BlockTransactions(startBlockNumber, endBlockNumber);
 
             if (!result['block'] || result['block'].length === 0) {
-                logger.error(`Deposits block empty results update Tron 449 ${JSON.stringify(result)}`);
+                logger.error(`updateTrc20WalletBalances|deposit block has empty results`, { result, startBlockNumber, endBlockNumber });
                 console.log(`Something went wrong ${JSON.stringify(result)}`);
                 return;
             }
 
             const blocks = result['block'];
             let recipientAddresses = [];
-            console.log(new Date());
 
             let depositTransactions = [];
-            //const depositTransactions = new Map();
-
+            let blockNumber;
             //? find blocks
             for (const block of blocks) {
 
@@ -215,7 +218,7 @@ class DepositService {
                     continue;
                 }
 
-                const blockNumber = block['block_header']['raw_data']['number'];
+                blockNumber = block['block_header']['raw_data']['number'];
                 const transactions = block['transactions'];
 
                 for (const transaction of transactions) {
@@ -224,19 +227,19 @@ class DepositService {
                     }
 
                     const status = transaction['ret'][0]['contractRet'];
+                    const txid = transaction['txID'];
+
                     if (status !== 'SUCCESS') {
                         continue;
                     }
 
-                    const txid = transaction['txID'];
                     const transactionValue = transaction['raw_data']['contract'][0]['parameter']['value'];
-
-                    // //? trx in trc20 network-deposit
+                    //? trx in trc20 network-deposit
                     if (transactionValue['amount'] && !transactionValue['asset_name']) {
                         let ins = 1;
                         if (transactionValue['owner_address']) {
                             const ownerAddress = transactionValue['owner_address'].toUpperCase();
-                            if (ownerAddress === tronHelper.toHex(sitePublicKey)) {
+                            if (ownerAddress === sitePublicKeyHex) {
                                 ins = 0;
                             }
                         }
@@ -252,128 +255,121 @@ class DepositService {
                         }
 
                         const to = transactionValue['to_address'].toUpperCase();
-                        const transactionAddress = { key: to, currency: symbol, txid: txid, amount: amount, block: blockNumber };
+                        const transactionAddress = { key: to, currency: symbol, txid, amount, block: blockNumber };
 
-                        //? Check if the key exists in Array                      
-                        //depositTransactions[to] = depositTransactions[to] || [];
-                        // depositTransactions[to].push(transactionAddress);
+                        //? added trx to array    
                         depositTransactions.push(transactionAddress);
-                        recipientAddresses.push(to);
+                        if (!recipientAddresses.includes(to)) {
+                            recipientAddresses.push(to);
+                        }
                     }
 
                     //? trc20 token-deposit
-                    if (transactionValue['data'] && transactionValue['contract_address']) {
+                    else if (transactionValue['data'] && transactionValue['contract_address']) {
                         const contractAddress_Tx = transactionValue['contract_address'];
                         const token = tokens.find(x => x.network.contractAddressHex === contractAddress_Tx);
                         if (token) {
+                            //? decode data for value and destination address
                             const data = transactionValue.data;
                             const txdata = data.substr(8);
                             let to = txdata.substr(0, 64).substring(22).toUpperCase();
                             to = "41" + to.substr(2);
                             const balData = parseInt(txdata.substr(64), 16);
-                            const amt = balData / Math.pow(10, token.network.decimalPoint);
-                            const amount = parseFloat(amt.toFixed(8));
-                            const transactionAddress = { key: to, currency: token.symbol, txid: txid, amount: amount, block: blockNumber };
+                            const trxAmount = balData / Math.pow(10, token.network.decimalPoint);
+                            const amount = parseFloat(trxAmount.toFixed(8));
+                            const transactionAddress = { key: to, currency: token.symbol, txid, amount, block: blockNumber };
 
-                            //? Check if the key exists in Array
-                            // depositTransactions[to] = depositTransactions[to] || [];
-                            //depositTransactions[to].push(transactionAddress);
+                            //? added trx to array    
                             depositTransactions.push(transactionAddress);
-                            recipientAddresses.push(to);
+                            if (!recipientAddresses.includes(to)) {
+                                recipientAddresses.push(to);
+                            }
                         }
                     }
                 }
-
-                //logger.info("data", Object.fromEntries(depositTransactions));
             }
-            // logger.debug('data', Object.values(depositTransactions));
-            console.log(new Date());
+
+            logger.error(`updateTrc20WalletBalances|data`, { recipientAddresses });
+
 
             if (recipientAddresses.length === 0) {
-                return;
+                logger.warn(`updateTrc20WalletBalances|dont exist recipient addresses`,
+                    { recipientAddresses: recipientAddresses.length, startBlockNumber, endBlockNumber });
             }
+            else {
+                //? group by data with bluckNumber
+                depositTransactions.sort((a, b) => a.block - b.block);
 
-            //? group by data with bluckNumber
-            console.log('group ', new Date());
-            //const groupedTransactionsData = CryptoHelper.groupedData(depositTransactions);
-            //const dataArray = Object.entries(depositTransactions);
-
-            // Sort the array based on the "block" property in ascending order
-            depositTransactions.sort((a, b) => a.block - b.block);
-
-            // Convert the sorted array back to an object
-            //const sortedData = Object.fromEntries(groupedTransactionsData);
-
-
-            console.log('end group ', new Date());
-            //console.log(depositTransactions);
-
-            //logger.warn('data', depositTransactions);
-
-            //logger.debug("Deposits deposit TRx !empty(toAddr)");
-
-            const userAddressDocuments = await UserAddressRepository.getCoinAddressesByTagAndCurrency(symbol, recipientAddresses);
-            if (userAddressDocuments.length === 0) {
-                return;
-            }
-
-            logger.debug("Deposits 496 wallet DepositFounds chcek ...");
-
-            for (const userAddress of userAddressDocuments) {
-
-                const userId = userAddress.user_id;
-                const trxAddress = userAddress.filter(item => item.address.currency === symbol);
-                if (trxAddress.length === 0) {
-                    continue;
+                const userAddressDocuments = await UserAddressRepository.getCoinAddressesByTagAndCurrency(symbol, recipientAddresses);
+                if (userAddressDocuments.length === 0) {
+                    logger.warn(`updateTrc20WalletBalances|not found userAddressDocuments`, { recipientAddresses: recipientAddresses.length });
                 }
+                else {
+                    logger.debug("updateTrc20WalletBalances|deposits wallet DepositFounds check ...");
+                    for (const userAddress of userAddressDocuments) {
 
-                const addressValue = Object.values(trxAddress)[0];
-                const account = addressValue.value.trim();
-                const tag = addressValue.tag.trim();
-                //const transactions = depositTransactions[tag] || [];
-                const transactions = depositTransactions.filter(x => x.key === tag);
+                        const userId = userAddress.user_id;
+                        const trxAddress = userAddress.address.filter(item => item.currency === symbol);
+                        if (trxAddress.length === 0) {
+                            continue;
+                        }
 
-                for (const transaction of transactions) {
+                        const addressValue = Object.values(trxAddress)[0];
+                        const account = addressValue.value.trim();
+                        const tag = addressValue.tag.trim();
+                        const transactions = depositTransactions.filter(x => x.key === tag);
 
-                    const trxAmount = parseFloat(transaction.amount);
-                    if (trxAmount <= 0.1) {
-                        continue;
+                        for (const transaction of transactions) {
+
+                            const trxAmount = parseFloat(transaction.amount);
+                            if (trxAmount <= 0.1) {
+                                continue;
+                            }
+                            const block = transaction.block;
+                            const txid = transaction.txid;
+
+                            const data = {
+                                txid,
+                                user_id: userId,
+                                currency: transaction.currency,
+                                amount: trxAmount,
+                                payment_type: 'Tron (TRX)',
+                                status: DepositState.COMPLETED,
+                                currency_type: CryptoType.CRYPTO,
+                                address_info: account,
+                                block
+                            };
+                            if (transaction.currency !== symbol) {
+                                data.bin_txid = '';
+                            }
+
+                            const updateUserWalletResponse = await this.updateUserWallet(data);
+                            logger.info("updateTrc20WalletBalances|check for new deposit trx", data);
+
+                            if (updateUserWalletResponse) {
+                                logger.info("updateTrc20WalletBalances|create new deposit trx", data);
+
+                                //? update the block and date of executed
+                                await NetworkRepository.updateLastStatusOfNetwork(network, block, new Date());
+                                logger.info(`updateTrc20WalletBalances|changeBlockState`, { network, block });
+                            }
+                        }
                     }
-                    const block = transaction.block;
-                    const txid = transaction.txid;
-
-                    const data = {
-                        txid,
-                        user_id: userId,
-                        currency: transaction.currency,
-                        amount: trxAmount,
-                        payment_type: 'Tron (TRX)',
-                        status: DepositState.COMPLETED,
-                        currency_type: CryptoType.CRYPTO,
-                        address_info: account,
-                        block
-                    };
-                    if (transaction.currency !== symbol) {
-                        data.bin_txid = '';
-                    }
-
-                    await this.updateUserWallet(data);
-                    logger.info("Deposits  516 create new deposit trx " + JSON.stringify(data));
-
-                    //? update the block and date of executed
-                    await NetworkRepository.updateLastStatusOfNetwork(network, lastblockNumber, new Date());
-                    // logger.info(`updateRippleWalletBalances|changeBlockState`, { network, currentBlockDate, exeTime });
                 }
             }
+
+            //? update the block and date of executed
+            await NetworkRepository.updateLastStatusOfNetwork(network, blockNumber, new Date());
+            logger.info(`updateTrc20WalletBalances|changeBlockState-general`, { network, blockNumber });
         }
         catch (error) {
-            logger.error(`updateRippleWalletBalances|exception`, { currency }, error);
+            logger.error(`updateTrc20WalletBalances|exception`, { currency }, error);
         }
     }
 
     //? add user Deposit, update userWallet 
     updateUserWallet = async (data) => {
-        const { txid, user_id, currency, amount, payment_type, status, currency_type, exeTime, address_info } = data;
+        const { txid, user_id, currency, amount, payment_type, status, currency_type, exeTime, address_info, block } = data;
         const txnExists = await DepositRepository.checkExistsTxnId(txid, user_id, currency);
         if (txnExists) {
             return false;
