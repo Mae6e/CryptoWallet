@@ -58,16 +58,54 @@ class Web3helper {
         return result.transactions;
     }
 
-    async getTransactionReceipt(transactionHash) {
-        return await web3.eth.getTransactionReceipt(transactionHash);
-    }
 
-    async decodedInputData(decodedData) {
-        const parameterTypes = ['address', 'uint256'];
-        //? remove the function signature (first 4 bytes) from the encoded value
-        const encodedParams = decodedData.slice(10);
-        //? decode the parameters using web3.eth.abi.decodeParameters
-        return web3.eth.abi.decodeParameters(parameterTypes, encodedParams);
+    async getContractTransactionsByHash(network, transactionHash) {
+        const web3 = this.initialWeb3Network(network);
+        let rsponse = await web3.eth.getTransactionReceipt(transactionHash);
+
+        let data = [];
+        if (rsponse.logs && rsponse.logs.length > 0) {
+            for (let i = 0; i < rsponse.logs.length; i++) {
+                const item = rsponse.logs[i];
+                if (item.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+                    && item.data !== '0x') {
+                    let TxObject = {};
+                    TxObject.contract = item.address;
+                    TxObject.hash = transactionHash;
+
+                    let transaction = web3.eth.abi.decodeLog([{
+                        type: 'address',
+                        name: 'from',
+                        indexed: true
+                    }, {
+                        type: 'address',
+                        name: 'to',
+                        indexed: true
+                    }, {
+                        type: 'uint256',
+                        name: 'value',
+                        indexed: true
+                    }],
+                        item.index,
+                        [item.topics[1], item.topics[2], item.data]);
+
+                    TxObject.from = transaction.from;
+                    TxObject.to = transaction.to;
+                    TxObject.value = transaction.value.toString();
+                    data.push(TxObject);
+
+                    // if (item.topics[1] && item.topics[2]) {
+                    //     trx.from = web3.eth.abi.decodeParameter('address', item.topics[1]);
+                    //     trx.to = web3.eth.abi.decodeParameter('address', item.topics[2]);
+                    //     trx.value = web3.eth.abi.decodeParameter('uint256', item.data).toString();
+                    //     data.push(trx);
+                    // }
+                }
+            }
+            // logger.debug("trx data", { transactionHash, data });
+
+        }
+        return null;
     }
 
 }
