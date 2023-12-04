@@ -1,4 +1,3 @@
-
 const CoinPayments = require('coinpayments');
 const path = require('path');
 
@@ -9,6 +8,9 @@ const Response = require('../utils/response');
 
 const NodeHelper = require('../utils/nodeHelper');
 const nodeHelper = new NodeHelper();
+
+const Web3Helper = require('../utils/web3Helper');
+const web3Helper = new Web3Helper();
 
 const UserAddressRepository = require('../repositories/userAddressRepository');
 const NetworkRepository = require('../repositories/networkRepository');
@@ -34,17 +36,6 @@ class WalletAddressService {
     constructor() {
         this.privateKey = CoinPaymentPrivateKey;
         this.publicKey = CoinPaymentPublicKey;
-    }
-
-    getWeb3Network = (networkType) => {
-        const [key, value] = Object.entries(NetworkType)
-            .find(([key, value]) => value == networkType) || [];
-        for (const network of Web3Networks) {
-            if (key === network) {
-                return value;
-            }
-        }
-        return undefined;
     }
 
     generateXRPTag = async (len = 8) => {
@@ -86,7 +77,7 @@ class WalletAddressService {
 
         let web3NetworkType;
         if (networkType) {
-            web3NetworkType = this.getWeb3Network(networkType);
+            web3NetworkType = web3Helper.getWeb3Network(networkType);
         }
 
         if (CoinpaymentCurrencies.includes(networkSymbol)) {
@@ -175,7 +166,7 @@ class WalletAddressService {
 
         let web3NetworkType;
         if (networkType) {
-            web3NetworkType = this.getWeb3Network(networkType);
+            web3NetworkType = web3Helper.getWeb3Network(networkType);
         }
 
         if (CoinpaymentCurrencies.includes(symbol)) {
