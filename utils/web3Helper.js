@@ -70,32 +70,19 @@ class Web3helper {
     async getTransactionsByBlockNumber(network, blockNumber) {
         const web3 = this.initialWeb3Network(network);
         const result = await web3.eth.getBlock(blockNumber, true);
-
-        // const decodedData = web3.eth.abi.decodeParameters(['address', 'address', 'uint256'],
-        //     '0x49c36c07000000000000000000000000172fcd41e0913e95784454622d1c3724f546f8490000000000000000000000000000000000000000000000023c16589049329898000000000000000000000000000000000000000010ce69d6f3a5af0000000000000000000000000000000000000000000000000010cf38b5974e7a00000000000000000000000000000000000000000000000000000000000000000000000000'
-        // );
-
-
-        let decodedData = web3.eth.abi.decodeParameters(
-            ["uint256", "uint256", "address[]", "address", "uint256"],
-            "0x49c36c07000000000000000000000000172fcd41e0913e95784454622d1c3724f546f8490000000000000000000000000000000000000000000000023c16589049329898000000000000000000000000000000000000000010ce69d6f3a5af0000000000000000000000000000000000000000000000000010cf38b5974e7a00000000000000000000000000000000000000000000000000000000000000000000000000"
-        );
-
-        // const decodedData = web3.eth.abi.decodeParameters(
-        //     ["uint256", "uint256", "address[]", "address", "uint256"],
-        //     "000000000000000000000000000000000000000000000001885c663d0035bce200000000000000000000000000000000000000000000000000f5666f7fdaa62600000000000000000000000000000000000000000000000000000000000000a0000000000000000000000000c0be713b48822271b362e9fac00479f5134172e80000000000000000000000000000000000000000000000000000000060e93fa900000000000000000000000000000000000000000000000000000000000000020000000000000000000000009813037ee2218799597d83d4a5b6f3b6778218d9000000000000000000000000c02aaa39b223fe8d0a0e5c4f27ead9083c756cc2"
-        // );
-
-        console.log(decodedData);
         if (!result) return [];
         return result.transactions;
     }
 
     async getTransactionReceiptByHash(network, transactionHash) {
-        const web3 = this.initialWeb3Network(network);
-        let rsponse = await web3.eth.getTransactionReceipt(transactionHash);
-        if (!rsponse) return null;
-        return rsponse;
+        try {
+            const web3 = this.initialWeb3Network(network);
+            let rsponse = await web3.eth.getTransactionReceipt(transactionHash);
+            if (!rsponse) return null;
+            return rsponse;
+        } catch (error) {
+            return null;
+        }
     }
 
     async getContractTransactionsByHash(network, transactionHash) {
@@ -103,7 +90,7 @@ class Web3helper {
         let rsponse = await web3.eth.getTransactionReceipt(transactionHash);
 
         let data = [];
-        if (rsponse.status !== '1') {
+        if (rsponse.status !== BigInt(1)) {
             return data;
         }
         if (rsponse.logs && rsponse.logs.length > 0) {
@@ -133,14 +120,13 @@ class Web3helper {
 
                     txObject.from = transaction.from.toLowerCase();
                     txObject.to = transaction.to.toLowerCase();
-                    txObject.value = transaction.value.toString();
+                    txObject.value = transaction.value;
                     data.push(txObject);
                 }
             }
         }
         return data;
     }
-
 }
 
 module.exports = Web3helper;

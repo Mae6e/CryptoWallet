@@ -28,15 +28,10 @@ const web3Helper = new Web3Helper();
 const logger = require('../logger')(module);
 
 
-
 class DepositService {
-
 
     //? main function for recognize network for deposit
     updateWalletBalance = async (data) => {
-
-        console.log(data)
-
 
         let { symbol, networkType } = data;
         if (!symbol || !networkType) {
@@ -52,28 +47,19 @@ class DepositService {
         if (!currency || !currency.networks[0]) {
             return Response.warn('Invalid Currency');
         }
-
         let web3NetworkType;
-        if (networkType) {
-            console.log(networkType)
-
+        if (networkType)
             web3NetworkType = web3Helper.getWeb3Network(networkType);
-            console.log(web3NetworkType)
-        }
 
-        if (network.type == NetworkType.RIPPLE) {
+        //? check for deposit by network 
+        if (network.type == NetworkType.RIPPLE)
             this.updateRippleWalletBalances(currency);
-        }
-        else if (network.type == NetworkType.TRC20) {
+        else if (network.type == NetworkType.TRC20)
             this.updateTrc20WalletBalances(currency);
-        }
-        else if (web3NetworkType) {
-            console.log("herer");
+        else if (web3NetworkType)
             this.updateBscWalletBalances(currency);
-        }
-        else {
+        else
             return Response.warn('Invalid request');
-        }
     }
 
     //? Ripple-Deposit
@@ -285,7 +271,7 @@ class DepositService {
 
                 const userAddressDocuments = await UserAddressRepository.getCoinAddressesByTagAndCurrency(symbol, recipientAddresses);
                 if (userAddressDocuments.length === 0) {
-                    logger.warn(`updateTrc20WalletBalances|not found userAddressDocuments`, { recipientAddresses: recipientAddresses.length });
+                    logger.info(`updateTrc20WalletBalances|not found userAddressDocuments`, { recipientAddresses: recipientAddresses.length });
                 }
                 else {
                     logger.debug("updateTrc20WalletBalances|deposits wallet DepositFounds check ...");
@@ -350,7 +336,7 @@ class DepositService {
         }
     }
 
-    //? Bep20-Deposit
+    //? Bep20 Track Deposit
     updateBscWalletBalances = async (currency) => {
         try {
             //? currency info
@@ -363,7 +349,7 @@ class DepositService {
             logger.info(`updateBscWalletBalances|currency information`, currency);
 
             if (!startBlockNumber) startBlockNumber = 10000;
-            const endBlockNumber = startBlockNumber + 1;
+            const endBlockNumber = startBlockNumber + 100;
             logger.debug(`updateBscWalletBalances|start`, { startBlockNumber, endBlockNumber });
 
             for (let i = startBlockNumber; i <= endBlockNumber; i++) {
@@ -373,19 +359,15 @@ class DepositService {
                     continue;
                 }
 
-                logger.debug(`updateBscWalletBalances|start checkTransactions of block`, { transactions: transactions.map(x => x.hash) });
-                logger.info(`updateBscWalletBalances|get transactions of block`, { transactions: transactions.length });
+                logger.info(`updateBscWalletBalances|tracking transactions of block`, { transactions: transactions.length, currentBlockNumber: i });
 
                 let adminTransactions = [];
                 let recipientTransactions = [];
 
-                console.log("the start of", new Date());
-
+                //? find transactions for main currency and tokens
                 for (const txObject of transactions) {
                     let { to, value, hash, from } = txObject;
-                    to = to.toLowerCase();
-
-                    if (value.toString() === '0') {
+                    if (value === BigInt(0)) {
                         const response = await web3Helper.getContractTransactionsByHash(networkType, hash);
                         if (response.to === sitePublicKey) {
                             adminTransactions.push(response);
@@ -393,7 +375,8 @@ class DepositService {
                             recipientTransactions.push(response);
                         }
                     }
-                    else if (to !== "") {
+                    else if (to) {
+                        to = to.toLowerCase();
                         if (to === sitePublicKey) {
                             adminTransactions.push({ to, value, hash, from });
                         } else if (from !== sitePublicKey) {
@@ -402,17 +385,12 @@ class DepositService {
                     }
                 }
 
-                console.log("the end of", new Date());
-
                 logger.info(`updateBscWalletBalances|get result of track transactions`,
                     {
                         currentBlockNumber: i,
                         recipientTransactions: recipientTransactions.length,
                         adminTransactions: adminTransactions.length
                     });
-
-                logger.debug(`updateBscWalletBalances|get recipientTransactions`, { recipientTransactions });
-                logger.debug(`updateBscWalletBalances|get adminTransactions`, { adminTransactions });
 
                 const data = {
                     symbol,
@@ -422,7 +400,7 @@ class DepositService {
                     networkType,
                     decimalPoint
                 };
-                // saveBscTransactions(data);
+                await saveBscTransactions(data);
             }
         }
         catch (error) {
@@ -430,28 +408,31 @@ class DepositService {
         }
     }
 
-    //? Bep20-Deposit Save
+    //? Bep20 Save Deposit
     saveBscTransactions = async (data) => {
 
-        const { symbol, blockNumber, adminTransactions, recipientTransactions, networkType, decimalPoint } = data;
+        const { symbol, blockNumber, adminTransactions,
+            recipientTransactions, networkType, decimalPoint } = data;
 
-        //? format tokens data and get hex value 
+        //? get all tokens and format tokens data
         const tokens = await this.getAllTokensByNetwork(networkType);
 
+
+        //? check user wallet update
         if (recipientTransactions.length === 0) {
-            Logger.debug(`No transactions of block ${block.block_number} related to xglober`);
+            logger.info(`saveBscTransactions|not exist recipientTransactions`, { data });
         }
         else {
+            //? find tracking address in db 
             const userAddressDocuments = await UserAddressRepository
                 .getCoinAddressesByValueAndCurrency(symbol, recipientTransactions.map(x => x.to));
             if (userAddressDocuments.length === 0) {
-                logger.warn(`updateTrc20WalletBalances|not found userAddressDocuments`, { recipientTransactions: recipientTransactions.length });
+                logger.info(`saveBscTransactions|not found userAddressDocuments`, { blockNumber, recipientTransactions: recipientTransactions.length });
             }
 
             for (const userAddress of userAddressDocuments) {
                 const userId = userAddress.user_id;
                 if (!userId) {
-                    //log
                     continue;
                 }
                 const currentAddresses = userAddress.address.filter(addr => addr.currency === symbol);
@@ -459,30 +440,37 @@ class DepositService {
                     continue;
                 }
 
-                Logger.debug("updateBnbBalance !empty address BNB ");
+                logger.debug(`saveBscTransactions|update balance for user`, { blockNumber, currentAddresses });
+
                 const addressValue = currentAddresses[0].value.trim().toLowerCase();
                 const transactions = recipientTransactions.filter(x => x.to === addressValue);
+
+                logger.info(`saveBscTransactions|count of transactions by user`, { addressValue, transactions: transactions.length });
 
                 for (const transaction of transactions) {
 
                     let { value, hash, contract } = transaction;
                     contract = contract.toLowerCase();
 
+                    if (value === BigInt(0))
+                        continue;
+
                     if (!contract) {
                         const amount = value / Math.pow(10, decimalpoint);
-                        if (amount <= 0) {
+                        if (amount <= 0)
                             continue;
-                        }
+
+                        //? check txid in network for status of it
                         const receiptResult = await web3Helper.getTransactionReceiptByHash(networkType, hash);
-                        Logger.debug(`Check Bnb txid ${JSON.stringify(receipt)}`);
+                        logger.debug(`saveBscTransactions|check currency txid`, { receiptResult: JSON.stringify(receiptResult) });
 
                         if (!receiptResult) {
-                            //? can not find data
+                            //? can not find txid in network
+                            logger.warn(`saveBscTransactions|can not explore txid`, { blockNumber, transaction });
                             continue;
                         }
-                        if (receiptResult.status !== 1) {
+                        if (receiptResult.status !== BigInt(1))
                             continue;
-                        }
 
                         const data = {
                             txid: hash,
@@ -495,20 +483,20 @@ class DepositService {
                             address_info: addressValue,
                             block: blockNumber
                         };
-                        logger.info("updateTrc20WalletBalances|check for new deposit trx", data);
-                        const updateUserWalletResponse = await this.updateUserWallet(data);
-                        logger.info("updateTrc20WalletBalances|create new deposit trx", data);
 
+                        logger.info("saveBscTransactions|check user wallet for new deposit txid", data);
+                        const response = await this.updateUserWallet(data);
+                        if (response)
+                            logger.info("saveBscTransactions|create new deposit txid for user", data);
                     }
                     else {
                         const token = tokens.filter(x => x.network.contractAddress === contract);
-                        if (!token) {
+                        if (!token)
                             continue;
-                        }
+
                         const amount = (value / token[0].decimalPoint).toFixed(8);
-                        if (amount <= 0) {
+                        if (amount <= 0)
                             continue;
-                        }
 
                         const data = {
                             txid: hash,
@@ -521,41 +509,50 @@ class DepositService {
                             address_info: addressValue,
                             block: blockNumber
                         };
-                        logger.info("updateTrc20WalletBalances|check for new deposit trx", data);
-                        const updateUserWalletResponse = await this.updateUserWallet(data);
-                        logger.info("updateTrc20WalletBalances|create new deposit trx", data);
-
+                        logger.info("saveBscTransactions|check user wallet for new deposit contract txid", data);
+                        const response = await this.updateUserWallet(data);
+                        if (response)
+                            logger.info("saveBscTransactions|create new deposit contract txid for user", data);
                     }
                 }
             }
         }
 
+        //? check admin wallet update
         if (adminTransactions.length > 0) {
-            Logger.debug("updateBnbBalance Admins  ");
-            for (const trans of adminTransactions) {
+            logger.debug(`saveBscTransactions|admin have transactions for deposit`, { blockNumber });
+
+            for (const transaction of adminTransactions) {
                 const { value, hash, contract } = transaction;
+
+                if (value === BigInt(0))
+                    continue;
 
                 if (contract) {
                     const token = tokens.filter(x => x.network.contractAddress === contract);
+                    if (!token)
+                        continue;
                     const amount = value / token.network.decimalPoint;
                     const data = { txid: hash, amount, currency: token.symbol };
-                    await this.updateAdminWallet(data);
-                    Logger.debug("updateBnbBalance admin trans " + JSON.stringify(trans));
+                    logger.info(`saveBscTransactions|check admin balance for contract txid`, { blockNumber, transaction });
+                    const response = await this.updateAdminWallet(data);
+                    if (response)
+                        logger.info(`saveBscTransactions|update admin balance for contract txid`, { blockNumber, transaction });
 
                 } else {
                     const amount = value / decimalPoint;
                     const data = { txid: hash, amount, currency: symbol };
-                    await this.updateAdminWallet(data);
-                    Logger.debug("updateBnbBalance admin trans " + JSON.stringify(trans));
+                    logger.info(`saveBscTransactions|check admin balance for txid`, { blockNumber, transaction });
+                    const response = await this.updateAdminWallet(data);
+                    if (response)
+                        logger.debug('saveBscTransactions|update admin balance for txid', { blockNumber, transaction });
                 }
-
             }
         }
 
         //? update the block and date of executed
         await NetworkRepository.updateLastStatusOfNetwork(networkType, blockNumber, new Date());
         logger.info(`updateTrc20WalletBalances|changeBlockState`, { networkType, blockNumber });
-
     }
 
 
@@ -636,7 +633,7 @@ class DepositService {
             }));
         }
 
-        logger.debug(`updateTrc20WalletBalances|tokens information`, tokens);
+        logger.debug(`getAllTokensByNetwork|tokens information`, tokens);
 
         return tokens;
     }
