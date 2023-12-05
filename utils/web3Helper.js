@@ -77,9 +77,9 @@ class Web3helper {
     async getTransactionReceiptByHash(network, transactionHash) {
         try {
             const web3 = this.initialWeb3Network(network);
-            let rsponse = await web3.eth.getTransactionReceipt(transactionHash);
-            if (!rsponse) return null;
-            return rsponse;
+            let response = await web3.eth.getTransactionReceipt(transactionHash);
+            if (!response) return null;
+            return response;
         } catch (error) {
             return null;
         }
@@ -87,16 +87,17 @@ class Web3helper {
 
     async getContractTransactionsByHash(network, transactionHash) {
         const web3 = this.initialWeb3Network(network);
-        let rsponse = await web3.eth.getTransactionReceipt(transactionHash);
+        let response = await web3.eth.getTransactionReceipt(transactionHash);
 
         let data = [];
-        if (rsponse.status !== BigInt(1)) {
+        if (response.status !== BigInt(1)) {
+            console.log('not confirm transactio', response.hash)
             return data;
         }
-        if (rsponse.logs && rsponse.logs.length > 0) {
-            for (let i = 0; i < rsponse.logs.length; i++) {
-                const item = rsponse.logs[i];
-                if (item.topics[0] === '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef'
+        if (response.logs && response.logs.length > 0) {
+            for (let i = 0; i < response.logs.length; i++) {
+                const item = response.logs[i];
+                if (item.topics[0] === process.env.TOPIC_BEP20
                     && item.data !== '0x') {
                     let txObject = {};
                     txObject.contract = item.address;

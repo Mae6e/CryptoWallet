@@ -349,7 +349,7 @@ class DepositService {
             logger.info(`updateBscWalletBalances|currency information`, currency);
 
             if (!startBlockNumber) startBlockNumber = 10000;
-            const endBlockNumber = startBlockNumber + 100;
+            const endBlockNumber = startBlockNumber + 1;
             logger.debug(`updateBscWalletBalances|start`, { startBlockNumber, endBlockNumber });
 
             for (let i = startBlockNumber; i <= endBlockNumber; i++) {
@@ -368,6 +368,7 @@ class DepositService {
                 for (const txObject of transactions) {
                     let { to, value, hash, from } = txObject;
                     if (value === BigInt(0)) {
+                        console.log("contract: ", hash);
                         const response = await web3Helper.getContractTransactionsByHash(networkType, hash);
                         if (response.to === sitePublicKey) {
                             adminTransactions.push(response);
@@ -376,6 +377,7 @@ class DepositService {
                         }
                     }
                     else if (to) {
+                        console.log("main: ", hash);
                         to = to.toLowerCase();
                         if (to === sitePublicKey) {
                             adminTransactions.push({ to, value, hash, from });
@@ -400,7 +402,7 @@ class DepositService {
                     networkType,
                     decimalPoint
                 };
-                await saveBscTransactions(data);
+                await this.saveBscTransactions(data);
             }
         }
         catch (error) {
@@ -416,7 +418,6 @@ class DepositService {
 
         //? get all tokens and format tokens data
         const tokens = await this.getAllTokensByNetwork(networkType);
-
 
         //? check user wallet update
         if (recipientTransactions.length === 0) {
@@ -612,30 +613,40 @@ class DepositService {
 
     //? get all tokens by network
     getAllTokensByNetwork = async (network) => {
-        const tokenDocuments = await CurrenciesRepository.getAllTokensByNetwork(network);
+        try {
+            const tokenDocuments = await CurrenciesRepository.getAllTokensByNetwork(network);
 
-        getContractAddress = (network) => {
-            network === NetworkType.TRC20 ?
-                tronHelper.toHex(obj.networks[0].contractAddress) :
-                obj.networks[0].contractAddress
+            console.log(tokenDocuments);
+
+            getContractAddress = (network) => {
+                network === NetworkType.TRC20 ?
+                    tronHelper.toHex(obj.networks[0].contractAddress) :
+                    obj.networks[0].contractAddress
+            }
+
+            console.log('herere tokens');
+
+
+            //? format tokens data and get hex value 
+            let tokens = [];
+            if (tokenDocuments.length > 0) {
+                tokens = [...tokenDocuments].map(obj => ({
+                    type: obj.type,
+                    symbol: obj.symbol,
+                    network: {
+                        decimalPoint: obj.networks[0].decimalPoint,
+                        contract: getContractAddress(network)
+                    }
+                }));
+            }
+
+            logger.debug(`getAllTokensByNetwork|tokens information`, tokens);
+
+            return tokens;
         }
-
-        //? format tokens data and get hex value 
-        let tokens = [];
-        if (tokenDocuments.length > 0) {
-            tokens = [...tokenDocuments].map(obj => ({
-                type: obj.type,
-                symbol: obj.symbol,
-                network: {
-                    decimalPoint: obj.networks[0].decimalPoint,
-                    contract: getContractAddress(network)
-                }
-            }));
+        catch (error) {
+            console.log(error.message);
         }
-
-        logger.debug(`getAllTokensByNetwork|tokens information`, tokens);
-
-        return tokens;
     }
 }
 
