@@ -552,7 +552,7 @@ class DepositService {
 
         //? update the block and date of executed
         await NetworkRepository.updateLastStatusOfNetwork(networkType, blockNumber, new Date());
-        logger.info(`updateTrc20WalletBalances|changeBlockState`, { networkType, blockNumber });
+        logger.info(`saveBscTransactions|changeBlockState`, { networkType, blockNumber });
     }
 
 
