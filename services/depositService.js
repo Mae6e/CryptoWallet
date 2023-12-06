@@ -340,11 +340,12 @@ class DepositService {
     updateBscWalletBalances = async (currency) => {
         try {
             //? currency info
-            let startBlockNumber = currency.networks[0].network.lastBlockNumber;
-            const symbol = currency.networks[0].network.symbol;
-            const sitePublicKey = currency.networks[0].network.siteWallet.publicKey.toLowerCase();
-            const decimalPoint = currency.networks[0].decimalPoint;
-            const networkType = currency.networks[0].network.type;
+            const { network, decimalPoint } = currency.networks[0];
+            let startBlockNumber = network.lastBlockNumber;
+            const symbol = network.symbol;
+            const sitePublicKey = network.siteWallet.publicKey.toLowerCase();
+            const networkType = network.type;
+            const networkId = network._id;
 
             logger.info(`updateBscWalletBalances|currency information`, currency);
 
@@ -370,6 +371,7 @@ class DepositService {
                     if (value === BigInt(0)) {
                         console.log("contract: ", hash);
                         const response = await web3Helper.getContractTransactionsByHash(networkType, hash);
+                        if (response.length === 0) continue;
                         if (response.to === sitePublicKey) {
                             adminTransactions.push(response);
                         } else if (response.from !== sitePublicKey) {
@@ -396,6 +398,7 @@ class DepositService {
 
                 const data = {
                     symbol,
+                    network: networkId,
                     blockNumber: i,
                     adminTransactions,
                     recipientTransactions,
@@ -413,11 +416,11 @@ class DepositService {
     //? Bep20 Save Deposit
     saveBscTransactions = async (data) => {
 
-        const { symbol, blockNumber, adminTransactions,
+        const { symbol, network, blockNumber, adminTransactions,
             recipientTransactions, networkType, decimalPoint } = data;
 
         //? get all tokens and format tokens data
-        const tokens = await this.getAllTokensByNetwork(networkType);
+        const tokens = await this.getAllTokensByNetwork(network);
 
         //? check user wallet update
         if (recipientTransactions.length === 0) {
@@ -425,6 +428,9 @@ class DepositService {
         }
         else {
             //? find tracking address in db 
+            console.log(recipientTransactions);
+            logger.debug('saveBscTransactions|check for userAddressDocuments', { data: recipientTransactions.map(x => x.to) });
+
             const userAddressDocuments = await UserAddressRepository
                 .getCoinAddressesByValueAndCurrency(symbol, recipientTransactions.map(x => x.to));
             if (userAddressDocuments.length === 0) {
@@ -552,8 +558,8 @@ class DepositService {
         }
 
         //? update the block and date of executed
-        await NetworkRepository.updateLastStatusOfNetwork(networkType, blockNumber, new Date());
-        logger.info(`saveBscTransactions|changeBlockState`, { networkType, blockNumber });
+        await NetworkRepository.updateLastStatusOfNetwork(network, blockNumber, new Date());
+        logger.info(`saveBscTransactions|changeBlockState`, { network, blockNumber });
     }
 
 
@@ -618,7 +624,7 @@ class DepositService {
 
             console.log(tokenDocuments);
 
-            getContractAddress = (network) => {
+            const getContractAddress = (network) => {
                 network === NetworkType.TRC20 ?
                     tronHelper.toHex(obj.networks[0].contractAddress) :
                     obj.networks[0].contractAddress

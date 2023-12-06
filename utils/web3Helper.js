@@ -119,6 +119,10 @@ class Web3helper {
                         item.index,
                         [item.topics[1], item.topics[2], item.data]);
 
+                    if (!transaction.from || !transaction.to) {
+                        continue;
+                    }
+
                     txObject.from = transaction.from.toLowerCase();
                     txObject.to = transaction.to.toLowerCase();
                     txObject.value = transaction.value;
