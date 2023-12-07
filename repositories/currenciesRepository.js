@@ -29,9 +29,9 @@ exports.getAllTokensByNetwork = async (network) => {
         }
     },
         {
-            type: 1,
             symbol: 1,
             "networks.contractAddress": 1,
+            "networks.network": 1,
             "networks.decimalPoint": 1
         })
         .populate('networks.network');

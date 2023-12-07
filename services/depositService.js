@@ -236,7 +236,7 @@ class DepositService {
                     //? trc20 token-deposit
                     else if (transactionValue['data'] && transactionValue['contract_address']) {
                         const contractAddress_Tx = transactionValue['contract_address'];
-                        const token = tokens.find(x => x.network.contract === contractAddress_Tx);
+                        const token = tokens.find(x => x.contract === contractAddress_Tx);
                         if (token) {
                             //? decode data for value and destination address
                             const data = transactionValue.data;
@@ -244,7 +244,7 @@ class DepositService {
                             let to = txdata.substr(0, 64).substring(22).toUpperCase();
                             to = "41" + to.substr(2);
                             const balData = parseInt(txdata.substr(64), 16);
-                            const trxAmount = balData / Math.pow(10, token.network.decimalPoint);
+                            const trxAmount = balData / Math.pow(10, token.decimalPoint);
                             const amount = parseFloat(trxAmount.toFixed(8));
                             const transactionAddress = { key: to, currency: token.symbol, txid, amount, block: blockNumber };
 
@@ -368,21 +368,24 @@ class DepositService {
                 //? find transactions for main currency and tokens
                 for (const txObject of transactions) {
                     let { to, value, hash, from } = txObject;
-                    if (value === BigInt(0)) {
-                        const response = await web3Helper.getContractTransactionsByHash(networkType, hash);
-                        if (response.length === 0) continue;
-                        if (response.to === sitePublicKey) {
-                            adminTransactions = [...adminTransactions, ...response];
-                        } else if (response.from !== sitePublicKey) {
-                            recipientTransactions = [...recipientTransactions, ...response];
+                    if (from === to) continue;
+                    else {
+                        if (value === BigInt(0)) {
+                            const response = await web3Helper.getContractTransactionsByHash(networkType, hash);
+                            if (response.length === 0) continue;
+                            if (response.to === sitePublicKey) {
+                                adminTransactions = [...adminTransactions, ...response];
+                            } else if (response.from !== sitePublicKey) {
+                                recipientTransactions = [...recipientTransactions, ...response];
+                            }
                         }
-                    }
-                    else if (to) {
-                        to = to.toLowerCase();
-                        if (to === sitePublicKey) {
-                            adminTransactions.push({ to, value, hash, from });
-                        } else if (from !== sitePublicKey) {
-                            recipientTransactions.push({ to, value, hash, from });
+                        else if (to) {
+                            to = to.toLowerCase();
+                            if (to === sitePublicKey) {
+                                adminTransactions.push({ to, value, hash, from });
+                            } else if (from !== sitePublicKey) {
+                                recipientTransactions.push({ to, value, hash, from });
+                            }
                         }
                     }
                 }
@@ -426,11 +429,16 @@ class DepositService {
         }
         else {
             //? find tracking address in db 
+
+            logger.debug('data', recipientTransactions.map(x => x.to));
+
             const userAddressDocuments = await UserAddressRepository
                 .getCoinAddressesByValueAndCurrency(symbol, recipientTransactions.map(x => x.to));
             if (userAddressDocuments.length === 0) {
                 logger.info(`saveBscTransactions|not found userAddressDocuments`, { blockNumber, recipientTransactions: recipientTransactions.length });
             }
+
+            logger.info(`saveBscTransactions|find the userAddressDocuments`, { blockNumber, userAddressDocuments: userAddressDocuments.length });
 
             for (const userAddress of userAddressDocuments) {
                 const userId = userAddress.user_id;
@@ -497,7 +505,7 @@ class DepositService {
                         if (!token)
                             continue;
 
-                        const amount = (Number(value) / token[0].decimalPoint).toFixed(8);
+                        const amount = (Number(value) / token.decimalPoint).toFixed(8);
                         if (amount <= 0)
                             continue;
 
@@ -532,10 +540,10 @@ class DepositService {
                     continue;
 
                 if (contract) {
-                    const token = tokens.filter(x => x.network.contractAddress === contract);
+                    const token = tokens.filter(x => x.contractAddress === contract);
                     if (!token)
                         continue;
-                    const amount = Number(value) / token.network.decimalPoint;
+                    const amount = Number(value) / token.decimalPoint;
                     const data = { txid: hash, amount, currency: token.symbol };
                     logger.info(`saveBscTransactions|check admin balance for contract txid`, { blockNumber, transaction });
                     const response = await this.updateAdminWallet(data);
@@ -616,22 +624,20 @@ class DepositService {
     //? get all tokens by network
     getAllTokensByNetwork = async (network) => {
         const tokenDocuments = await CurrenciesRepository.getAllTokensByNetwork(network);
-        const getContractAddress = (network) => {
-            network === NetworkType.TRC20 ?
-                tronHelper.toHex(obj.networks[0].contractAddress) :
-                obj.networks[0].contractAddress
+
+        const getContractAddress = (networkObject) => {
+            networkObject.network.type === NetworkType.TRC20 ?
+                tronHelper.toHex(networkObject.contract) :
+                networkObject.contract
         }
 
         //? format tokens data and get hex value 
         let tokens = [];
         if (tokenDocuments.length > 0) {
             tokens = [...tokenDocuments].map(obj => ({
-                type: obj.type,
-                symbol: obj.symbol,
-                network: {
-                    decimalPoint: obj.networks[0].decimalPoint,
-                    contract: getContractAddress(network)
-                }
+                type: obj.networks[0].network.type,
+                decimalPoint: obj.networks[0].decimalPoint,
+                contract: getContractAddress(obj.networks[0])
             }));
         }
 
