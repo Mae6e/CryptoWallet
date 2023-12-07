@@ -350,7 +350,7 @@ class DepositService {
             logger.info(`updateBscWalletBalances|currency information`, currency);
 
             if (!startBlockNumber) startBlockNumber = 10000;
-            const endBlockNumber = startBlockNumber + 1;
+            const endBlockNumber = startBlockNumber + 100;
             logger.debug(`updateBscWalletBalances|start`, { startBlockNumber, endBlockNumber });
 
             for (let i = startBlockNumber; i <= endBlockNumber; i++) {
@@ -369,17 +369,15 @@ class DepositService {
                 for (const txObject of transactions) {
                     let { to, value, hash, from } = txObject;
                     if (value === BigInt(0)) {
-                        console.log("contract: ", hash);
                         const response = await web3Helper.getContractTransactionsByHash(networkType, hash);
                         if (response.length === 0) continue;
                         if (response.to === sitePublicKey) {
-                            adminTransactions.push(response);
+                            adminTransactions = [...adminTransactions, ...response];
                         } else if (response.from !== sitePublicKey) {
-                            recipientTransactions.push(response);
+                            recipientTransactions = [...recipientTransactions, ...response];
                         }
                     }
                     else if (to) {
-                        console.log("main: ", hash);
                         to = to.toLowerCase();
                         if (to === sitePublicKey) {
                             adminTransactions.push({ to, value, hash, from });
@@ -428,9 +426,6 @@ class DepositService {
         }
         else {
             //? find tracking address in db 
-            console.log(recipientTransactions);
-            logger.debug('saveBscTransactions|check for userAddressDocuments', { data: recipientTransactions.map(x => x.to) });
-
             const userAddressDocuments = await UserAddressRepository
                 .getCoinAddressesByValueAndCurrency(symbol, recipientTransactions.map(x => x.to));
             if (userAddressDocuments.length === 0) {
@@ -447,7 +442,7 @@ class DepositService {
                     continue;
                 }
 
-                logger.debug(`saveBscTransactions|update balance for user`, { blockNumber, currentAddresses });
+                logger.debug(`saveBscTransactions|waiting for update balance for user`, { blockNumber, currentAddresses });
 
                 const addressValue = currentAddresses[0].value.trim().toLowerCase();
                 const transactions = recipientTransactions.filter(x => x.to === addressValue);
@@ -457,25 +452,25 @@ class DepositService {
                 for (const transaction of transactions) {
 
                     let { value, hash, contract } = transaction;
-                    contract = contract.toLowerCase();
 
                     if (value === BigInt(0))
                         continue;
 
                     if (!contract) {
-                        const amount = value / Math.pow(10, decimalpoint);
+                        const amount = Number(value) / Math.pow(10, decimalPoint);
                         if (amount <= 0)
                             continue;
 
                         //? check txid in network for status of it
                         const receiptResult = await web3Helper.getTransactionReceiptByHash(networkType, hash);
-                        logger.debug(`saveBscTransactions|check currency txid`, { receiptResult: JSON.stringify(receiptResult) });
 
                         if (!receiptResult) {
                             //? can not find txid in network
                             logger.warn(`saveBscTransactions|can not explore txid`, { blockNumber, transaction });
                             continue;
                         }
+
+                        logger.debug(`saveBscTransactions|check currency txid`, { networkType, hash: receiptResult.transactionHash, status: receiptResult.status.toString() });
                         if (receiptResult.status !== BigInt(1))
                             continue;
 
@@ -497,11 +492,12 @@ class DepositService {
                             logger.info("saveBscTransactions|create new deposit txid for user", data);
                     }
                     else {
+                        contract = contract.toLowerCase();
                         const token = tokens.filter(x => x.network.contractAddress === contract);
                         if (!token)
                             continue;
 
-                        const amount = (value / token[0].decimalPoint).toFixed(8);
+                        const amount = (Number(value) / token[0].decimalPoint).toFixed(8);
                         if (amount <= 0)
                             continue;
 
@@ -539,7 +535,7 @@ class DepositService {
                     const token = tokens.filter(x => x.network.contractAddress === contract);
                     if (!token)
                         continue;
-                    const amount = value / token.network.decimalPoint;
+                    const amount = Number(value) / token.network.decimalPoint;
                     const data = { txid: hash, amount, currency: token.symbol };
                     logger.info(`saveBscTransactions|check admin balance for contract txid`, { blockNumber, transaction });
                     const response = await this.updateAdminWallet(data);
@@ -547,7 +543,7 @@ class DepositService {
                         logger.info(`saveBscTransactions|update admin balance for contract txid`, { blockNumber, transaction });
 
                 } else {
-                    const amount = value / decimalPoint;
+                    const amount = Number(value) / decimalPoint;
                     const data = { txid: hash, amount, currency: symbol };
                     logger.info(`saveBscTransactions|check admin balance for txid`, { blockNumber, transaction });
                     const response = await this.updateAdminWallet(data);
@@ -619,40 +615,29 @@ class DepositService {
 
     //? get all tokens by network
     getAllTokensByNetwork = async (network) => {
-        try {
-            const tokenDocuments = await CurrenciesRepository.getAllTokensByNetwork(network);
-
-            console.log(tokenDocuments);
-
-            const getContractAddress = (network) => {
-                network === NetworkType.TRC20 ?
-                    tronHelper.toHex(obj.networks[0].contractAddress) :
-                    obj.networks[0].contractAddress
-            }
-
-            console.log('herere tokens');
-
-
-            //? format tokens data and get hex value 
-            let tokens = [];
-            if (tokenDocuments.length > 0) {
-                tokens = [...tokenDocuments].map(obj => ({
-                    type: obj.type,
-                    symbol: obj.symbol,
-                    network: {
-                        decimalPoint: obj.networks[0].decimalPoint,
-                        contract: getContractAddress(network)
-                    }
-                }));
-            }
-
-            logger.debug(`getAllTokensByNetwork|tokens information`, tokens);
-
-            return tokens;
+        const tokenDocuments = await CurrenciesRepository.getAllTokensByNetwork(network);
+        const getContractAddress = (network) => {
+            network === NetworkType.TRC20 ?
+                tronHelper.toHex(obj.networks[0].contractAddress) :
+                obj.networks[0].contractAddress
         }
-        catch (error) {
-            console.log(error.message);
+
+        //? format tokens data and get hex value 
+        let tokens = [];
+        if (tokenDocuments.length > 0) {
+            tokens = [...tokenDocuments].map(obj => ({
+                type: obj.type,
+                symbol: obj.symbol,
+                network: {
+                    decimalPoint: obj.networks[0].decimalPoint,
+                    contract: getContractAddress(network)
+                }
+            }));
         }
+
+        logger.debug(`getAllTokensByNetwork|tokens information`, tokens);
+
+        return tokens;
     }
 }
 
