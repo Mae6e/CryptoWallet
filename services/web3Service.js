@@ -39,7 +39,7 @@ class Web3Service {
       //? get all tokens and format tokens data
       const tokens = await utilityService.getAllTokensByNetwork(networkId);
 
-      for (let i = startBlockNumber; i <= endBlockNumber; i++) {
+      for (let i = startBlockNumber + 1; i <= endBlockNumber; i++) {
         const transactions = await web3Helper.getTransactionsByBlockNumber(networkType, i);
         if (!transactions || transactions.length === 0) {
           logger.error(`updateBscWalletBalances|deposit block has empty results`,
@@ -84,11 +84,14 @@ class Web3Service {
         const response = await web3Helper.getContractTransactionsByHash(networkType, hash);
         if (response.length === 0) continue;
 
-        if (response.to === sitePublicKey) {
-          adminTransactions.push(...response);
-        } else if (response.from !== sitePublicKey) {
-          recipientTransactions.push(...response);
+        for (const tokenData of response) {
+          if (tokenData.to === sitePublicKey) {
+            adminTransactions.push(tokenData);
+          } else if (tokenData.from !== sitePublicKey) {
+            recipientTransactions.push(tokenData);
+          }
         }
+
       } else if (to) {
         const toLowerCase = to.toLowerCase();
         if (toLowerCase === sitePublicKey) {
@@ -168,7 +171,7 @@ class Web3Service {
         if (isContract) {
           const token = this.findTokenByContract(tokens, contract);
           if (!token) continue;
-          amount = (Number(value) / token?.decimalPoint)?.toFixed(8);
+          amount = (Number(value) / Math.pow(10, token.decimalPoint)).toFixed(8);
           paymentType = 'BNB (BEP20)';
           currency = token.symbol;
         }
@@ -199,6 +202,9 @@ class Web3Service {
         if (response) {
           logger.info(`processRecipientTransactions|create new deposit ${currency} for user`, data);
         }
+        else {
+          logger.error(`processRecipientTransactions|can not update user balance for ${currency}`, data);
+        }
       }
     }
   }
@@ -220,7 +226,7 @@ class Web3Service {
       if (isContract) {
         const token = this.findTokenByContract(tokens, contract);
         if (!token) continue;
-        amount = (Number(value) / token?.decimalPoint);
+        amount = (Number(value) / Math.pow(10, token.decimalPoint)).toFixed(8);
         currency = token.symbol;
       }
       else {
@@ -234,10 +240,13 @@ class Web3Service {
         currency
       };
 
-      logger.info(`processAdminTransactions|check admin balance for ${currency}`, { blockNumber, transaction });
+      logger.info(`processAdminTransactions|check admin balance for ${currency}`, { blockNumber, data });
       const response = await utilityService.updateAdminWallet(data);
       if (response) {
-        logger.info(`processAdminTransactions|update admin balance for ${currency}`, { blockNumber, transaction });
+        logger.info(`processAdminTransactions|update admin balance for ${currency}`, { blockNumber, data });
+      }
+      else {
+        logger.error(`processAdminTransactions|can not admin balance for ${currency}`, { blockNumber, data });
       }
     }
   }

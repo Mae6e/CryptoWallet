@@ -18,7 +18,7 @@ class UtilityService {
     //? add user Deposit, update userWallet 
     updateUserWallet = async (data) => {
         const { txid, user_id, currency, amount, payment_type, status, currency_type, exeTime, address_info, block } = data;
-        const txnExists = await DepositRepository.checkExistsTxnId(txid, user_id, currency);
+        const txnExists = await DepositRepository.checkExistsTxnId(txid, user_id, currency, amount);
         if (txnExists) {
             return false;
         }
@@ -42,11 +42,10 @@ class UtilityService {
 
         //? update user wallet
         const userWallet = await UserWalletRepository.getUserBalance({ user: user_id, currency });
-        if (userWallet) {
-            const balance = userWallet[currency] || 0;
-            const updateBal = parseFloat(balance + amount);
-            await UserWalletRepository.updateUserWallet({ user: user_id, currency, amount: updateBal.toFixed(12) });
-        }
+        const balance = userWallet[currency] || 0;
+        const updateBal = parseFloat(balance + amount);
+        await UserWalletRepository.updateUserWallet({ user: user_id, currency, amount: updateBal.toFixed(12) });
+
 
         //TODO SEND SMS
         return true;
