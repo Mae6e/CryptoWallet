@@ -91,9 +91,9 @@ class Web3helper {
 
         let data = [];
         if (response.status !== BigInt(1)) {
-            console.log('not confirm transactio', response.hash)
             return data;
         }
+
         if (response.logs && response.logs.length > 0) {
             for (let i = 0; i < response.logs.length; i++) {
                 const item = response.logs[i];
