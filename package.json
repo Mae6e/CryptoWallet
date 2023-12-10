@@ -25,6 +25,7 @@
     "trongrid": "^1.2.6",
     "tronweb": "^4.2.0",
     "web3": "^4.2.2",
+    "web3-eth-abi": "^4.1.4",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^4.7.1"
   }

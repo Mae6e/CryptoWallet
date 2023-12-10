@@ -1,7 +1,11 @@
 
 const { Web3 } = require('web3');
+const abiCoder = require("web3-eth-abi");
+
 const { NetworkType } = require('./constants');
 const { Web3Networks } = require('./../utils');
+
+const topic = process.env.TOPIC_BEP20;
 
 
 class Web3helper {
@@ -90,20 +94,13 @@ class Web3helper {
         let response = await web3.eth.getTransactionReceipt(transactionHash);
 
         let data = [];
-        if (response.status !== BigInt(1)) {
+        if (response.status !== BigInt(1))
             return data;
-        }
 
         if (response.logs && response.logs.length > 0) {
-            for (let i = 0; i < response.logs.length; i++) {
-                const item = response.logs[i];
-                if (item.topics[0] === process.env.TOPIC_BEP20
-                    && item.data !== '0x') {
-                    let txObject = {};
-                    txObject.contract = item.address;
-                    txObject.hash = transactionHash;
-
-                    let transaction = web3.eth.abi.decodeLog([{
+            for (const item of response.logs) {
+                if (item.topics[0] === topic && item.data !== '0x') {
+                    const transaction = abiCoder.decodeLog([{
                         type: 'address',
                         name: 'from',
                         indexed: true
@@ -119,14 +116,15 @@ class Web3helper {
                         item.index,
                         [item.topics[1], item.topics[2], item.data]);
 
-                    if (!transaction.from || !transaction.to) {
-                        continue;
-                    }
+                    if (!transaction.from || !transaction.to) continue;
 
-                    txObject.from = transaction.from.toLowerCase();
-                    txObject.to = transaction.to.toLowerCase();
-                    txObject.value = transaction.value;
-                    data.push(txObject);
+                    data.push({
+                        from: transaction.from.toLowerCase(),
+                        to: transaction.to.toLowerCase(),
+                        value: transaction.value,
+                        contract: item.address,
+                        hash: transactionHash
+                    });
                 }
             }
         }
