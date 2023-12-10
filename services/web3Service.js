@@ -82,8 +82,6 @@ class Web3Service {
 
       if (value === BigInt(0) || input !== '0x') {
         const response = await web3Helper.getContractTransactionsByHash(networkType, hash);
-        if (response.length === 0) continue;
-
         for (const tokenData of response) {
           if (tokenData.to === sitePublicKey) {
             adminTransactions.push(tokenData);
@@ -226,7 +224,7 @@ class Web3Service {
       if (isContract) {
         const token = this.findTokenByContract(tokens, contract);
         if (!token) continue;
-        amount = (Number(value) / Math.pow(10, token.decimalPoint)).toFixed(8);
+        amount = Number(value) / Math.pow(10, token.decimalPoint);
         currency = token.symbol;
       }
       else {
@@ -240,13 +238,13 @@ class Web3Service {
         currency
       };
 
-      logger.info(`processAdminTransactions|check admin balance for ${currency}`, { blockNumber, data });
+      logger.info(`processAdminTransactions|check admin deposit for ${currency}`, { blockNumber, data });
       const response = await utilityService.updateAdminWallet(data);
       if (response) {
-        logger.info(`processAdminTransactions|update admin balance for ${currency}`, { blockNumber, data });
+        logger.info(`processAdminTransactions|added admin deposit for ${currency}`, { blockNumber, data });
       }
       else {
-        logger.error(`processAdminTransactions|can not admin balance for ${currency}`, { blockNumber, data });
+        logger.error(`processAdminTransactions|can not add admin deposit for ${currency}`, { blockNumber, data });
       }
     }
   }

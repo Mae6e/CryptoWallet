@@ -54,7 +54,7 @@ class UtilityService {
     //? add admin Deposit
     updateAdminWallet = async (data) => {
         const { txid, currency, amount } = data;
-        const txnExists = await WltDepositsRepository.checkExistsTxnId(txid);
+        const txnExists = await WltDepositsRepository.checkExistsTxnId(txid, amount);
         if (txnExists) {
             return false;
         }

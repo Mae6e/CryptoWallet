@@ -1,8 +1,8 @@
 const WltDeposits = require('../models/wltDepositsModel');
 
 //? check if txid already exists
-exports.checkExistsTxnId = async (txid) => {
-    return await WltDeposits.exists({ txnid: txid });
+exports.checkExistsTxnId = async (txid, amount) => {
+    return await WltDeposits.exists({ txnid: txid, amount });
 }
 
 //? create 
