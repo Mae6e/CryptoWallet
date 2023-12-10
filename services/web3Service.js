@@ -5,7 +5,7 @@ const NetworkRepository = require('../repositories/networkRepository');
 const UserAddressRepository = require('../repositories/userAddressRepository');
 
 //? utils
-const { DepositState, CryptoType } = require('../utils/constants');
+const { DepositState, CryptoType, PaymentType, TokenPaymentType } = require('../utils/constants');
 
 //? helpers
 const Web3Helper = require('../utils/web3Helper');
@@ -106,13 +106,13 @@ class Web3Service {
 
   //? save user balance
   saveBscTransactions = async (data) => {
-    const { symbol, network, blockNumber, adminTransactions, recipientTransactions, decimalPoint, tokens } = data;
+    const { symbol, network, blockNumber, adminTransactions, recipientTransactions, decimalPoint, tokens, networkType } = data;
 
     //? check user deposit
-    await this.processRecipientTransactions({ recipientTransactions, tokens, symbol, decimalPoint, blockNumber });
+    await this.processRecipientTransactions({ recipientTransactions, tokens, symbol, decimalPoint, blockNumber, networkType });
 
     //? check admin deposit
-    await this.processAdminTransactions({ adminTransactions, tokens, symbol, decimalPoint, blockNumber });
+    await this.processAdminTransactions({ adminTransactions, tokens, symbol, decimalPoint, blockNumber, networkType });
 
     //? update the block and date of executed
     await NetworkRepository.updateLastStatusOfNetwork(network, blockNumber, new Date());
@@ -121,7 +121,7 @@ class Web3Service {
 
 
   //? check transactions for users
-  processRecipientTransactions = async ({ recipientTransactions, tokens, symbol, decimalPoint, blockNumber }) => {
+  processRecipientTransactions = async ({ recipientTransactions, tokens, symbol, decimalPoint, blockNumber, networkType }) => {
     //? check user wallet update
     if (recipientTransactions.length === 0) {
       logger.info(`processRecipientTransactions|not exist recipientTransactions`, { data });
@@ -170,12 +170,22 @@ class Web3Service {
           const token = this.findTokenByContract(tokens, contract);
           if (!token) continue;
           amount = (Number(value) / Math.pow(10, token.decimalPoint)).toFixed(8);
-          paymentType = 'BNB (BEP20)';
+          paymentType = TokenPaymentType[networkType];
           currency = token.symbol;
         }
         else {
+
+          const receiptResult = await web3Helper.getTransactionReceiptByHash(networkType, hash);
+          if (!receiptResult) {
+            logger.error(`processRecipientTransactions|can not check the status of transaction`, { networkType, hash });
+            continue;
+          }
+
+          if (receiptResult.status !== BigInt(1))
+            continue;
+
           amount = Number(value) / Math.pow(10, decimalPoint);
-          paymentType = 'Binance Coin (BNB)';
+          paymentType = PaymentType[networkType];
           currency = symbol;
         }
 
@@ -209,7 +219,7 @@ class Web3Service {
 
 
   //? check transactions for admin
-  processAdminTransactions = async ({ adminTransactions, tokens, symbol, decimalPoint, blockNumber }) => {
+  processAdminTransactions = async ({ adminTransactions, tokens, symbol, decimalPoint, blockNumber, networkType }) => {
     for (const transaction of adminTransactions) {
       const { value, hash, contract } = transaction;
 
@@ -228,6 +238,15 @@ class Web3Service {
         currency = token.symbol;
       }
       else {
+        const receiptResult = await web3Helper.getTransactionReceiptByHash(networkType, hash);
+        if (!receiptResult) {
+          logger.error(`processAdminTransactions|can not check the status of transaction`, { networkType, hash });
+          continue;
+        }
+
+        if (receiptResult.status !== BigInt(1))
+          continue;
+
         amount = Number(value) / Math.pow(10, decimalPoint);
         currency = symbol;
       }

@@ -65,3 +65,17 @@ exports.DepositState = {
 exports.CryptoType = {
     CRYPTO: 'crypto'
 }
+
+exports.PaymentType = {
+    4: 'Ethereum (ETH)',
+    6: 'Binance Coin (BNB)',
+    8: 'Arbitrum (ETH)',
+    9: 'Polygon (MATIC)'
+}
+
+exports.TokenPaymentType = {
+    4: 'ETH (ETHEREUM)',
+    6: 'BNB (BEP20)',
+    8: 'ETH (ARBITRUM)',
+    9: 'MATIC (POLYGON)'
+}
