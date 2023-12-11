@@ -11,7 +11,6 @@ exports.getCurrencyBySymbol = async (symbol, network) => {
             "networks.contractAddress": 1,
             "networks.decimalPoint": 1,
             "networks.lastExecutedAt": 1,
-            //"networks.lastBlockNumber": 1,
             "networks.siteWallet": 1,
             type: 1,
             symbol: 1
@@ -22,9 +21,11 @@ exports.getCurrencyBySymbol = async (symbol, network) => {
 
 exports.getAllTokensByNetwork = async (network) => {
     return await Currencies.find({
-        type: CurrencyType.TOKEN, networks: {
+        $or: [{ type: CurrencyType.TOKEN }, { type: CurrencyType.COIN_OR_TOKEN }],
+        networks: {
             $elemMatch: {
-                network: network
+                network: network,
+                contractAddress: { $exists: true, $ne: '' }
             }
         }
     },
@@ -37,21 +38,6 @@ exports.getAllTokensByNetwork = async (network) => {
         .populate('networks.network');
 }
 
-
-
-// exports.updateLastStatusOfCurrency = async (id, network, lastBlockNumber, lastExecutedAt) => {
-//     try {
-//         return await Currencies.findOneAndUpdate({ _id: id, "networks.network": network }, {
-//             $set: {
-//                 "networks.$.lastExecutedAt": lastExecutedAt,
-//                 "networks.$.lastBlockNumber": lastBlockNumber
-//             }
-//         }, { new: true });
-//     }
-//     catch (error) {
-//         console.log(error.message);
-//     }
-// }
 
 
 
