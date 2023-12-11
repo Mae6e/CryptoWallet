@@ -21,20 +21,23 @@ const logger = require('../logger')(module);
 class Web3Service {
 
   //? main function for recognize for deposit
-  updateBscWalletBalances = async (currency) => {
+  updateWeb3WalletBalances = async (currency, networkType) => {
     try {
       //? currency info
-      const { network, decimalPoint } = currency.networks[0];
+      const { network, decimalPoint } = currency.networks.find(x => x.network.type === networkType);
+      if (!network || !decimalPoint) {
+        logger.debug(`updateWeb3WalletBalances|invalid data`, { currency, networkType });
+        return;
+      }
       let startBlockNumber = network.lastBlockNumber || 10000;
       const symbol = network.symbol;
       const sitePublicKey = network.siteWallet.publicKey.toLowerCase();
-      const networkType = network.type;
       const networkId = network._id;
 
-      logger.info(`updateBscWalletBalances|currency information`, currency);
+      logger.info(`updateWeb3WalletBalances|currency information`, currency, networkType);
 
       const endBlockNumber = startBlockNumber + 100;
-      logger.debug(`updateBscWalletBalances|start`, { startBlockNumber, endBlockNumber });
+      logger.debug(`updateWeb3WalletBalances|start`, { startBlockNumber, endBlockNumber });
 
       //? get all tokens and format tokens data
       const tokens = await utilityService.getAllTokensByNetwork(networkId);
@@ -42,15 +45,15 @@ class Web3Service {
       for (let i = startBlockNumber + 1; i <= endBlockNumber; i++) {
         const transactions = await web3Helper.getTransactionsByBlockNumber(networkType, i);
         if (!transactions || transactions.length === 0) {
-          logger.error(`updateBscWalletBalances|deposit block has empty results`,
+          logger.error(`updateWeb3WalletBalances|deposit block has empty results`,
             { transactions, startBlockNumber, currentBlockNumber: i });
           continue;
         }
 
-        logger.info(`updateBscWalletBalances|tracking transactions of block`, { transactions: transactions.length, currentBlockNumber: i });
+        logger.info(`updateWeb3WalletBalances|tracking transactions of block`, { transactions: transactions.length, currentBlockNumber: i });
 
         const { adminTransactions, recipientTransactions } = await this.filterTransactions({ transactions, sitePublicKey, networkType });
-        logger.info(`updateBscWalletBalances|get result of track transactions`, {
+        logger.info(`updateWeb3WalletBalances|get result of track transactions`, {
           currentBlockNumber: i,
           recipientTransactions: recipientTransactions.length,
           adminTransactions: adminTransactions.length
@@ -62,10 +65,10 @@ class Web3Service {
           networkType, decimalPoint, tokens
         };
 
-        await this.saveBscTransactions(data);
+        await this.saveWeb3Transactions(data);
       }
     } catch (error) {
-      logger.error(`updateBscWalletBalances|exception`, { currency }, error);
+      logger.error(`updateWeb3WalletBalances|exception`, { networkType }, error);
     }
   }
 
@@ -105,7 +108,7 @@ class Web3Service {
 
 
   //? save user balance
-  saveBscTransactions = async (data) => {
+  saveWeb3Transactions = async (data) => {
     const { symbol, network, blockNumber, adminTransactions, recipientTransactions, decimalPoint, tokens, networkType } = data;
 
     //? check user deposit
@@ -116,15 +119,16 @@ class Web3Service {
 
     //? update the block and date of executed
     await NetworkRepository.updateLastStatusOfNetwork(network, blockNumber, new Date());
-    logger.info(`saveBscTransactions|changeBlockState`, { network, blockNumber });
+    logger.info(`saveWeb3Transactions|changeBlockState`, { network, blockNumber });
   }
 
 
   //? check transactions for users
-  processRecipientTransactions = async ({ recipientTransactions, tokens, symbol, decimalPoint, blockNumber, networkType }) => {
+  processRecipientTransactions = async (data) => {
+    const { recipientTransactions, tokens, symbol, decimalPoint, blockNumber, networkType } = data;
     //? check user wallet update
     if (recipientTransactions.length === 0) {
-      logger.info(`processRecipientTransactions|not exist recipientTransactions`, { data });
+      logger.info(`processRecipientTransactions|not exist recipientTransactions`, data);
       return;
     }
 
@@ -211,7 +215,7 @@ class Web3Service {
           logger.info(`processRecipientTransactions|create new deposit ${currency} for user`, data);
         }
         else {
-          logger.error(`processRecipientTransactions|can not update user balance for ${currency}`, data);
+          logger.warn(`processRecipientTransactions|can not update user balance for ${currency}`, data);
         }
       }
     }
@@ -219,7 +223,8 @@ class Web3Service {
 
 
   //? check transactions for admin
-  processAdminTransactions = async ({ adminTransactions, tokens, symbol, decimalPoint, blockNumber, networkType }) => {
+  processAdminTransactions = async (data) => {
+    const { adminTransactions, tokens, symbol, decimalPoint, blockNumber, networkType } = data;
     for (const transaction of adminTransactions) {
       const { value, hash, contract } = transaction;
 
@@ -263,7 +268,7 @@ class Web3Service {
         logger.info(`processAdminTransactions|added admin deposit for ${currency}`, { blockNumber, data });
       }
       else {
-        logger.error(`processAdminTransactions|can not add admin deposit for ${currency}`, { blockNumber, data });
+        logger.warn(`processAdminTransactions|can not add admin deposit for ${currency}`, { blockNumber, data });
       }
     }
   }

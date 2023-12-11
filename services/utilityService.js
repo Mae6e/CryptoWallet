@@ -88,9 +88,6 @@ class UtilityService {
         });
 
         logger.debug('getAllTokensByNetwork|tokens information', tokens);
-
-        console.log(tokens);
-
         return tokens;
     };
 

@@ -164,6 +164,9 @@ class WalletAddressService {
             return Response.warn('Invalid Currency');
         }
 
+        const networkObject = currency.networks.find(x => x.network.type === networkType);
+        if (!networkObject) return Response.warn('Not found Network');
+
         let web3NetworkType;
         if (networkType) {
             web3NetworkType = web3Helper.getWeb3Network(networkType);
@@ -178,7 +181,7 @@ class WalletAddressService {
             return 0;
         }
         else if (network.type == NetworkType.RIPPLE) {
-            if (currency.type === CurrencyType.COIIN) {
+            if (!networkObject.contractAddress) {
 
                 const adminAddress = network.siteWallet.publicKey;
                 const balance = nodeHelper.getRippleBalance(adminAddress);
@@ -188,7 +191,7 @@ class WalletAddressService {
             }
         }
         else if (network.type == NetworkType.TRC20) {
-            if (currency.type === CurrencyType.COIIN) {
+            if (!networkObject.contractAddress) {
                 const adminAddress = network.siteWallet.publicKey;
                 const { decimalPoint } = currency.networks[0];
                 const balance = nodeHelper.getTrc20Balance(adminAddress, decimalPoint);
@@ -202,7 +205,7 @@ class WalletAddressService {
             }
         }
         else if (web3NetworkType) {
-            if (currency.type === CurrencyType.COIIN) {
+            if (!networkObject.contractAddress) {
                 const adminAddress = network.siteWallet.publicKey;
                 const getBalance = nodeHelper.getWeb3Balance(web3NetworkType, adminAddress);
                 return Response.success({ balance: getBalance, address: adminAddress });

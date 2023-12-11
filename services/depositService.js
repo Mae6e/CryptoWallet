@@ -50,7 +50,7 @@ class DepositService {
         }
         else if (web3NetworkType) {
             const web3Service = new Web3Service();
-            web3Service.updateBscWalletBalances(currency);
+            web3Service.updateWeb3WalletBalances(currency, network.type);
         }
         else
             return Response.warn('Invalid request');
