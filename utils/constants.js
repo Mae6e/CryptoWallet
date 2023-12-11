@@ -8,7 +8,8 @@ exports.NetworkStatus = {
 exports.CurrencyType = {
     COIIN: "coin",
     FIAT: "fiat",
-    TOKEN: "token"
+    TOKEN: "token",
+    COIN_OR_TOKEN: "unified"
 }
 
 exports.CurrencyStatus = {
