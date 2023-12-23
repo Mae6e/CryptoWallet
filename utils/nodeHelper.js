@@ -77,6 +77,50 @@ class NodeHelper {
         }
     }
 
+    printLedgerResult = async (method, params) => {
+        const body = { method, params };
+        console.log(body);
+        return await axios.post(process.env.EXPLORER_RIPPLE, {
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
+            },
+            data: body
+        });
+    }
+
+    getRippleLedgerTransactions = async (params) => {
+        try {
+            const { account, start, end } = params;
+            let data = {
+                account, ledger_index_min: -1,
+                ledger_index_max: -1
+            };
+            let transations = [];
+            do {
+                // const body = JSON.stringify([data]);
+                const response = await this.printLedgerResult('account_tx', [data]);
+                console.log(response.warnings)
+                if (!response || !response.result) break;
+
+                array.push({ ...response.result.transactions });
+                if (!response.result.marker) {
+                    break;
+                }
+
+                //? add the marker to continue querying - pagination
+                data.marker = response.result.marker;
+
+            } while (true);
+
+            console.log(transations);
+            return transations;
+        } catch (error) {
+            console.error('Error:', error.message);
+            return [];
+        }
+    }
+
 
     getTrc20BlockTransactions = async (start, end) => {
         const blocks = { startNum: start, endNum: end };
