@@ -69,6 +69,7 @@ exports.CryptoType = {
 
 exports.PaymentType = {
     4: 'Ethereum (ETH)',
+    5: 'Tron (TRX)',
     6: 'Binance Coin (BNB)',
     8: 'Arbitrum (ETH)',
     9: 'Polygon (MATIC)'
@@ -76,7 +77,34 @@ exports.PaymentType = {
 
 exports.TokenPaymentType = {
     4: 'ETH (ETHEREUM)',
+    5: 'Tron (TRC20)',
     6: 'BNB (BEP20)',
     8: 'ETH (ARBITRUM)',
     9: 'MATIC (POLYGON)'
 }
+
+
+exports.AdminTransferStatus = {
+    PENDING: 1,
+    SUCCESSS: 2,
+    OUT_OF_ENERGY: 3
+}
+
+exports.AdminTransferTxtStatus = {
+    PENDING: 'pending',
+    SUCCESSS: 'SUCCESS',
+    OUT_OF_ENERGY: 'OUT_OF_ENERGY'
+}
+
+exports.DepositMoveStatus = {
+    NOT_MOVED: 0,
+    MOVED: 1,
+    COMPLETED: 2,
+    FAILED: 3
+}
+
+exports.TokenFeeStatus = {
+    ACTIVE: 'active',
+    DEACTIVE: 'deactive'
+}
+

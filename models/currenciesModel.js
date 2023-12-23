@@ -154,7 +154,6 @@ let currencySchema = new mongoose.Schema({
         },
         contractAddress: {
             type: String,
-            lowercase: true,
             minLength: [5, 'The contract address must be above 5'],
             maxLength: [50, 'The contract address must be blew 50']
         },

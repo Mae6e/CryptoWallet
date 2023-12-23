@@ -12,10 +12,16 @@ const { TronGridKey } = require('../utils');
 
 class NodeHelper {
 
+
+    executeCommand = (command) => {
+        const output = execSync(command);
+        return output.toString();
+    }
+
     getRippleBalance = (address) => {
         let value = 0;
         const command = `cd ${path.join(PublicPath, 'public', 'ripple')} && node ripple_balance.js ${address}`;
-        const output = execSync(command).toString();
+        const output = this.executeCommand(command);
 
         if (!output) return value;
         const JsonValue = JSON.parse(output);
@@ -28,15 +34,14 @@ class NodeHelper {
 
     getTrc20Balance = (address, decimalPoint) => {
         const command = `cd ${path.join(PublicPath, 'public', 'tron')} && node balance.js ${address}`;
-        const output = execSync(command).toString();
+        const output = this.executeCommand(command);
         const res = JSON.parse(output);
-        //Logger.debug(`CheckTrxBalance ${addr} response ${JSON.stringify(output)}`);
         return res / Math.pow(10, decimalPoint);
     }
 
     getTrc20TokenBalance = (contract, address, decimalPoint) => {
         const command = `cd ${path.join(PublicPath, 'public', 'tron')} && node trcBalance.js ${contract} ${address}`;
-        const output = execSync(command).toString();
+        const output = this.executeCommand(command);
         const res = JSON.parse(output);
 
         if (res && typeof res === 'object') {
@@ -51,7 +56,7 @@ class NodeHelper {
     getWeb3Balance = (network, address) => {
         try {
             const command = `cd ${path.join(PublicPath, 'public', 'web3')} && node balance.js ${network} ${address}`;
-            const output = execSync(command).toString();
+            const output = this.executeCommand(command);
             const res = JSON.parse(output);
             return res;
         }
@@ -63,7 +68,7 @@ class NodeHelper {
     getWeb3TokenBalance = (network, contract, address, decimalPoint) => {
         try {
             const command = `cd ${path.join(PublicPath, 'public', 'web3')} && node tokenBalance.js ${network} ${contract} ${address} ${decimalPoint}`;
-            const output = execSync(command).toString();
+            const output = this.executeCommand(command);
             const res = JSON.parse(output);
             return res;
         }
@@ -86,11 +91,41 @@ class NodeHelper {
             });
             return response.data;
         } catch (error) {
-            //console.log(error);
             console.error('Error:', error.message);
             return [];
         }
     }
+
+    signRippleTransaction = (args) => {
+        const command = `cd ${path.join(PublicPath, 'public', 'ripple')} && node ripple_sendcoins.js ${args.join(' ')}`;
+        const output = this.executeCommand(command);
+        return output;
+    }
+
+    signTrc20Transaction = (args) => {
+        const command = `cd ${path.join(PublicPath, 'public', 'tron')} && node sendTrans.js ${args.join(' ')}`;
+        const output = this.executeCommand(command);
+        const data = JSON.parse(output);
+        return data;
+    }
+
+    signTrc20TokenTransaction = (args) => {
+        const command = `cd ${path.join(PublicPath, 'public', 'tron')} && node sendToken.js ${args.join(' ')}`;
+        const output = this.executeCommand(command);
+        const data = JSON.parse(output);
+        return data;
+    }
+
+    trc20TriggerConstant = (address, to, contractAddress, amount) => {
+        const args = { address, to, contractAddress, amount };
+        //logger.info("Start triggerConstrnt node triggerconstrant.js {$address} {$to} {$amount} {$contractAddrss}");
+        const command = `cd ${path.join(PublicPath, 'public', 'tron')} && node triggerconstrant.js ${args.join(' ')}`;
+        const output = this.executeCommand(command);
+        const data = JSON.parse(output);
+        //Logger:: info("triggerConstrnt adddrss {$address} to {$to} contract {$contractAddrss} output ".json_encode($output));
+        return data;
+    }
+
 }
 
 

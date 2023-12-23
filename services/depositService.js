@@ -42,11 +42,11 @@ class DepositService {
         //? check for deposit by network 
         if (network.type == NetworkType.RIPPLE) {
             const rippleService = new RippleService();
-            rippleService.updateRippleWalletBalances(currency);
+            rippleService.updateRippleWalletBalances(currency, network.type);
         }
         else if (network.type == NetworkType.TRC20) {
             const trc20Service = new Trc20Service();
-            trc20Service.updateTrc20WalletBalances(currency);
+            trc20Service.updateTrc20WalletBalances(currency, network.type);
         }
         else if (web3NetworkType) {
             const web3Service = new Web3Service();

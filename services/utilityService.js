@@ -4,6 +4,7 @@ const CurrenciesRepository = require('../repositories/currenciesRepository');
 const UserWalletRepository = require('../repositories/userWalletRepository');
 const DepositRepository = require('../repositories/depositRepository');
 const WltDepositsRepository = require('../repositories/wltDepositsRepository');
+const UserAddressRepository = require('../repositories/userAddressRepository');
 
 //? utils
 const { NetworkType } = require('../utils/constants');
@@ -73,7 +74,7 @@ class UtilityService {
         const getContractAddress = (networkObject) => {
             return networkObject.network.type === NetworkType.TRC20
                 ? tronHelper.toHex(networkObject.contractAddress)
-                : networkObject.contractAddress;
+                : networkObject.contractAddress.toLowerCase();
         };
 
         //? format tokens data and get hex value 
@@ -91,6 +92,22 @@ class UtilityService {
         return tokens;
     };
 
+    getAllDepositsByStatus = async (data) => {
+        return await DepositRepository.getAllDepositsByStatus(data);
+    }
+
+    getCoinAddressesByUsers = async (data) => {
+        return await UserAddressRepository.getCoinAddressesByUsers(data);
+    }
+
+    UpdateDepositsByStatus = async (data) => {
+        await DepositRepository.UpdateDepositsByStatus(data);
+    }
+
+
+    UpdateDepositsToCompeleted = async (data) => {
+        await DepositRepository.UpdateDepositsToCompeleted(data);
+    }
 }
 
 

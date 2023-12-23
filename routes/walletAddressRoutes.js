@@ -10,7 +10,7 @@ const depositController = new DepositController();
 
 router.post('/address', walletAddressController.generateAddress);
 router.post('/site/balance', walletAddressController.getSiteWalletBalance);
-router.post('/test', depositController.updateWalletBalance);
+router.get('/test', depositController.updateWalletBalance);
 
 module.exports = router;
 

@@ -7,6 +7,7 @@ exports.XRPSecret = process.env.XRP_SECRET
 
 exports.SecretKey = process.env.SECRET_KEY
 exports.SecretIV = process.env.SECRET_IV
+exports.SourceUserId = process.env.TRANSFER_SOURCE_ID
 
 exports.CoinpaymentCurrencies = ['BTC', 'DOGE', 'LTCT'];
 exports.Web3Networks = ['BSC', 'ERC20', 'ARBITRUM', 'POLYGON'];
@@ -21,7 +22,9 @@ exports.NetworkSymbol = {
     XRP: 'XRP'
 }
 
-exports.TronGridKey = process.env.TRONGRID_APIKEY
+exports.TronGridKey = process.env.TRONGRID_APIKEY;
+exports.TrxStockAdminFeeLimit = process.env.TRX_STOCK_ADMIN_FEE_LIMIT;
+exports.TrxFeeLimit = process.env.TRX_FEE_LIMIT
 
 
 

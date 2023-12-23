@@ -21,8 +21,7 @@ const {
     CoinPaymentPrivateKey,
     CoinPaymentPublicKey,
     XRPAddress,
-    CoinpaymentCurrencies,
-    Web3Networks
+    CoinpaymentCurrencies
 } = require('../utils');
 
 const { CurrencyType, NetworkType } = require('../utils/constants');

@@ -5,7 +5,7 @@ const abiCoder = require("web3-eth-abi");
 const { NetworkType } = require('./constants');
 const { Web3Networks } = require('./../utils');
 
-const topic = process.env.TOPIC_BEP20;
+const topic = process.env.TOPIC_WEB3;
 
 
 class Web3helper {
@@ -122,7 +122,7 @@ class Web3helper {
                         from: transaction.from.toLowerCase(),
                         to: transaction.to.toLowerCase(),
                         value: transaction.value,
-                        contract: item.address,
+                        contract: item.address.toLowerCase(),
                         hash: transactionHash
                     });
                 }

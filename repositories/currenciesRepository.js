@@ -13,7 +13,8 @@ exports.getCurrencyBySymbol = async (symbol, network) => {
             "networks.lastExecutedAt": 1,
             "networks.siteWallet": 1,
             type: 1,
-            symbol: 1
+            symbol: 1,
+            adminWallet: 1
         })
         .populate('networks.network');
 }
@@ -37,6 +38,8 @@ exports.getAllTokensByNetwork = async (network) => {
         })
         .populate('networks.network');
 }
+
+
 
 
 

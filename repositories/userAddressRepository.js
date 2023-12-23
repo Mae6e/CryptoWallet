@@ -36,4 +36,12 @@ exports.getCoinAddressesByValueAndCurrency = async (currency, addresses) => {
 }
 
 
+exports.getCoinAddressesByUsers = async ({ currency, users }) => {
+    return await UserAddress.find({
+        currency,
+        user_id: { $in: users }
+    }).select('user_id address').lean();
+}
+
+
 
