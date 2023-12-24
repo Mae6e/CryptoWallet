@@ -82,7 +82,7 @@ class Trc20Service {
             }
 
             //? update the block and date of executed
-            await NetworkRepository.updateLastStatusOfNetwork(networkId, endBlockNumber, new Date());
+            await NetworkRepository.updateLastStatusOfNetwork(networkId, endBlockNumber);
             logger.info(`updateTrc20WalletBalances|changeBlockState-general`, { networkId, endBlockNumber });
         }
         catch (error) {
@@ -218,7 +218,7 @@ class Trc20Service {
                     if (updateUserWalletResponse) {
                         logger.info("saveTrc20Transactions|create new deposit trx", data);
                         //? update the block and date of executed
-                        await NetworkRepository.updateLastStatusOfNetwork(networkId, block, new Date());
+                        await NetworkRepository.updateLastStatusOfNetwork(networkId, block);
                         logger.info(`saveTrc20Transactions|changeBlockState`, { networkId, block });
                     }
                     else {

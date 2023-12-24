@@ -77,47 +77,55 @@ class NodeHelper {
         }
     }
 
-    printLedgerResult = async (method, params) => {
-        const body = { method, params };
-        console.log(body);
-        return await axios.post(process.env.EXPLORER_RIPPLE, {
-            headers: {
-                'Accept': 'application/json',
+    printLedgerResult = async (id, method, params) => {
+        const body = { id, method, params: [params] };
+        const response = await axios({
+            'method': 'post',
+            'url': process.env.EXPLORER_RIPPLE,
+            'headers': {
                 'Content-Type': 'application/json'
             },
-            data: body
+            'data': body
         });
+
+        return response;
     }
 
-    getRippleLedgerTransactions = async (params) => {
+    getRippleLedgerTransactions = async (input) => {
         try {
-            const { account, start, end } = params;
-            let data = {
-                account, ledger_index_min: -1,
-                ledger_index_max: -1
+            const { account, start, end } = input;
+            let params = {
+                account,
+                forward: 'true',
+                binary: 'false',
+                limit: 100,
+                ledger_index_min: start,
+                ledger_index_max: end
             };
-            let transations = [];
-            do {
-                // const body = JSON.stringify([data]);
-                const response = await this.printLedgerResult('account_tx', [data]);
-                console.log(response.warnings)
-                if (!response || !response.result) break;
 
-                array.push({ ...response.result.transactions });
-                if (!response.result.marker) {
+            let resultArray = [];
+            do {
+                const response = await this.printLedgerResult(1, 'account_tx', params);
+
+                const { data } = response;
+                if (!response || !data) break;
+
+                const { status, transactions, marker } = data.result;
+                if (!transactions || status !== 'success') break;
+
+                resultArray = resultArray.concat(transactions.filter(x => x.tx).map(x => x.tx));
+                if (!marker)
                     break;
-                }
 
                 //? add the marker to continue querying - pagination
-                data.marker = response.result.marker;
+                params.marker = marker;
 
             } while (true);
 
-            console.log(transations);
-            return transations;
+            return resultArray;
         } catch (error) {
             console.error('Error:', error.message);
-            return [];
+            return 0;
         }
     }
 

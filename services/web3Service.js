@@ -118,7 +118,7 @@ class Web3Service {
     await this.processAdminTransactions({ adminTransactions, tokens, symbol, decimalPoint, blockNumber, networkType });
 
     //? update the block and date of executed
-    await NetworkRepository.updateLastStatusOfNetwork(network, blockNumber, new Date());
+    await NetworkRepository.updateLastStatusOfNetwork(network, blockNumber);
     logger.info(`saveWeb3Transactions|changeBlockState`, { network, blockNumber });
   }
 
