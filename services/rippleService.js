@@ -29,42 +29,37 @@ class RippleService {
     updateRippleWalletBalances = async (currency, networkType) => {
         try {
             //? currency info
-            const { network, adminWallet } = currency.networks.find(x => x.network.type === networkType);
-            if (!network || !currency.symbol) {
-                logger.warn(`updateRippleWalletBalances|invalid data`, { currency, networkType });
+            const { network, adminWallet, decimalPoint } = currency.networks.find(x => x.network.type === networkType);
+            if (!network || !currency.symbol || !decimalPoint) {
+                logger.warn(`updateRippleWalletBalances|invalid data`, { currency, networkType, decimalPoint });
                 return;
             }
 
-            const lastblockNumber = network.lastblockNumber;
-            const lastExecutedAt = network.lastExecutedAt;
-            const currentBlockDate = (lastExecutedAt ? lastExecutedAt.toISOString() : '2022-09-12T00:00:00Z');
-            const url = `${process.env.EXPLORER_RIPPLE.replace('ADDRESS', XRPAddress)}${currentBlockDate}`;
-            logger.debug(`updateRippleWalletBalances|start`, { currentBlockDate, url });
+            const start = network.lastBlockNumber ? network.lastBlockNumber + 1 : -1;
+            const end = start > 0 ? start + 1000 : 50000000;
 
-            const response = await axios.get(url);
-            if (!response || !response.data) {
-                return;
+            const response = await nodeHelper.getRippleLedgerTransactions({ account: XRPAddress, start, end });
+
+            logger.debug(`updateRippleWalletBalances|start`, { start, end, length: response.length });
+
+            if (!response && typeof (response) === 'number') return;
+            else if (response.length === 0) {
+                logger.warn(`updateRippleWalletBalances|findData`, { start, end, transactions: response.length });
+            }
+            else {
+                logger.debug(`updateRippleWalletBalances|success`, { start, end });
+
+                for (const transaction of response) {
+                    await this.processRippleTransaction({ transaction, symbol: currency.symbol, decimalPoint });
+                }
             }
 
-            const { result, count, payments } = response.data;
-            if (result !== 'success' || count === 0) {
-                logger.error(`updateRippleWalletBalances|problem`, { currentBlockDate, result });
-                return;
-            }
-
-            if (!payments || payments.length === 0) {
-                logger.warn(`updateRippleWalletBalances|findData`, { currentBlockDate, payments: payments.length });
-                return;
-            }
-
-            logger.debug(`updateRippleWalletBalances|success`, { currentBlockDate, count });
-
-            for (const transaction of payments) {
-                await this.processRippleTransaction({ transaction, symbol, network, lastblockNumber, currentBlockDate });
-            }
+            //? update the block and date of executed
+            await NetworkRepository.updateLastStatusOfNetwork(network, end);
+            logger.info(`processRippleTransaction|changeBlockState`, { network });
 
             //TODO transfer
-            this.rippleExternalTransfer(currency.symbol, adminWallet);
+            //this.rippleExternalTransfer(currency.symbol, adminWallet);
 
         } catch (error) {
             logger.error(`updateRippleWalletBalances|exception`, { currency }, error);
@@ -72,36 +67,45 @@ class RippleService {
     }
 
     //? check transactions for users and admin
-    processRippleTransaction = async ({ transaction, symbol, network, lastblockNumber, currentBlockDate }) => {
-        const { destination, destination_tag,
-            delivered_amount, tx_hash, executed_time } = transaction;
+    processRippleTransaction = async (data) => {
+        const { transaction, symbol, decimalPoint } = data;
+        const { Destination, DestinationTag,
+            Amount, hash, date } = transaction;
 
-        logger.debug(`processRippleTransaction|transactions`, { currentBlockDate, transaction });
-        if (!destination_tag || destination_tag === "" || XRPAddress !== destination) {
+        logger.debug(`processRippleTransaction|get transaction`, { transaction });
+        if (!DestinationTag || DestinationTag === "" || XRPAddress !== Destination || !Amount) {
             return;
         }
 
-        const userAddressDocument = await UserAddressRepository.getUserAddressByTag(symbol, XRPAddress, destination_tag);
+        logger.debug(`processRippleTransaction|waiting for deposit.`, { transaction });
+
+        const amount = parseFloat(Amount / Math.pow(10, decimalPoint));
+        const userAddressDocument = await UserAddressRepository.getUserAddressByTag(symbol, XRPAddress, DestinationTag);
         if (userAddressDocument) {
             const data = {
-                txid: tx_hash,
+                txid: hash,
                 user_id: userAddressDocument.user_id,
                 currency: symbol,
-                amount: delivered_amount,
+                amount,
                 payment_type: 'Ripple (XRP)',
                 status: DepositState.COMPLETED,
                 currency_type: CryptoType.CRYPTO,
-                exeTime: executed_time
+                exeTime: new Date(date * 1000)
             };
-            await utilityService.updateUserWallet(data);
+
+            const updateUserWalletResponse = await utilityService.updateUserWallet(data);
+            logger.info("processRippleTransaction|check for new deposit ripple", data);
+            if (updateUserWalletResponse) {
+                logger.debug("processRippleTransaction|create new deposit ripple", data);
+            }
+            else {
+                logger.warn(`processRippleTransaction|can not update user balance for ripple`, data);
+            }
         } else {
-            const data = { txid, amount, currency: symbol };
+            const data = { txid: hash, amount, currency: symbol };
+            logger.info("processRippleTransaction|check for new admin-deposit ripple", data);
             await utilityService.updateAdminWallet(data);
         }
-
-        //? update the block and date of executed
-        await NetworkRepository.updateLastStatusOfNetwork(network, lastblockNumber, exeTime);
-        logger.info(`processRippleTransaction|changeBlockState`, { network, executed_time });
     }
 
     //#endregion deposit
