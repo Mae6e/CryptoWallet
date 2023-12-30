@@ -4,7 +4,11 @@ const path = require('path');
 const { execSync } = require('child_process');
 
 const { PublicPath } = require('../index');
+const { NetworkSymbol } = require('../utils');
 const Response = require('../utils/response');
+
+const { encryptText, encryptRippleText, decryptRippleText } = require('../utils/cryptoEngine');
+const rippleValidation = require('../public/ripple/ripple_check_address');
 
 const NodeHelper = require('../utils/nodeHelper');
 const nodeHelper = new NodeHelper();
@@ -12,6 +16,10 @@ const nodeHelper = new NodeHelper();
 const Web3Helper = require('../utils/web3Helper');
 const web3Helper = new Web3Helper();
 
+const RippleService = require('../services/rippleService');
+const rippleService = new RippleService();
+
+//? repositories
 const UserAddressRepository = require('../repositories/userAddressRepository');
 const NetworkRepository = require('../repositories/networkRepository');
 const CurrenciesRepository = require('../repositories/currenciesRepository');
@@ -20,14 +28,12 @@ const CurrenciesRepository = require('../repositories/currenciesRepository');
 const {
     CoinPaymentPrivateKey,
     CoinPaymentPublicKey,
-    XRPAddress,
     CoinpaymentCurrencies
 } = require('../utils');
 
-const { CurrencyType, NetworkType } = require('../utils/constants');
+const { NetworkType } = require('../utils/constants');
 
 const { randomString } = require('../utils/walletHelper');
-const { encryptText } = require('../utils/cryptoEngine');
 
 
 class WalletAddressService {
@@ -94,9 +100,15 @@ class WalletAddressService {
         }
         else if (networkType == NetworkType.RIPPLE) {
             //? Ripple network
-            const address = XRPAddress;
+            const { generalWallet } = await NetworkRepository.getGeneralWalletByType(NetworkType.RIPPLE);
+            if (!generalWallet) {
+                return Response.warn('Currently, the wallet not found');
+            }
             const tag = await this.generateXRPTag(8);
-            return Response.success({ address, tag, secret: '', public: '' });
+            return Response.success({
+                address: generalWallet.publicKey,
+                tag, secret: '', public: ''
+            });
         }
         else if (networkType == NetworkType.TRC20) {
             //? Assuming address.js is located in the 'tron' folder
@@ -180,14 +192,12 @@ class WalletAddressService {
             return 0;
         }
         else if (network.type == NetworkType.RIPPLE) {
-            if (!networkObject.contractAddress) {
+            if (!network.generalWallet)
+                return Response.warn('Currently, can not find wallet');
 
-                const adminAddress = network.siteWallet.publicKey;
-                const balance = nodeHelper.getRippleBalance(adminAddress);
-                return Response.success({ balance, address: adminAddress });
-            } else {
-                return Response.warn('Currently, do not support currency');
-            }
+            const adminAddress = network.generalWallet.publicKey;
+            const balance = await nodeHelper.getRippleBalance(adminAddress);
+            return Response.success({ balance, address: adminAddress });
         }
         else if (network.type == NetworkType.TRC20) {
             if (!networkObject.contractAddress) {
@@ -220,6 +230,109 @@ class WalletAddressService {
             return Response.warn('Invalid request');
         }
 
+    };
+
+    //? get general wallet
+    getGeneralWalletAddress = async (networkType) => {
+        const network = await NetworkRepository.getGeneralWalletByType(networkType);
+        if (!network || !network.generalWallet) {
+            return Response.warn('Can not find wallet');
+        }
+        return Response.success({ address: network.generalWallet.publicKey });
+    }
+
+    //! use in execute command
+    //? generate ripple wallet and transfer
+    static generateRippleWallet = async () => {
+        try {
+
+            const networkType = NetworkType.RIPPLE;
+
+            //! check deposit and transfer
+            const network = await NetworkRepository.getNetworkByType(networkType);
+            if (!network) {
+                console.log('Invalid Network');
+            }
+
+            const currency = await CurrenciesRepository.getCurrencyBySymbol(NetworkSymbol.XRP, network._id);
+            if (!currency || !currency.networks[0]) {
+                console.log('Invalid Currency');
+            }
+
+            const { generalWallet } = network;
+            const { adminWallet } = currency.networks.find(x => x.network.type === networkType);
+            if (!generalWallet || !generalWallet.publicKey) {
+                console.log('Can not find source wallet!')
+            }
+            if (!adminWallet || !adminWallet.publicKey) {
+                console.log('Can not find destination wallet!')
+            }
+
+            console.log('');
+            console.log('Please wait for checking pervious deposits...');
+            console.log(`Transferring from ${generalWallet.publicKey} to ${adminWallet.publicKey} wallet...`);
+            console.log('');
+
+            //? transfer
+            await rippleService.updateRippleWalletBalances(currency, network.type);
+
+            //? generate ripple address
+            const generationData = await nodeHelper.rippleGenerateAddress();
+            if (!generationData) {
+                console.log('error occurred for generate address.please check log.');
+                return;
+            }
+
+            const { secret, address } = generationData;
+            const ecrypyPrivateKey = encryptRippleText(secret);
+
+            if (!ecrypyPrivateKey || !address) {
+                console.log('The generation keys failed!');
+                return;
+            }
+
+            const response = await NetworkRepository.updateGeneralWallet(
+                { type: networkType, publicKey: address, privateKey: ecrypyPrivateKey });
+            if (!response) {
+                console.log('Wallet update failed.check the type of network in db.');
+                return;
+            }
+
+            console.log('Wallet update successful.please save PivateKey in the safe way!');
+            console.log(`PivateKey: ${secret}`);
+            console.log(`PublicKey: ${address}`);
+
+        } catch (error) {
+            console.log('Exception occurred:');
+            console.log(error.message);
+        }
+    }
+
+    //! use in execute command
+    //? update ripple wallet 
+    static updateRippleWallet = async ({ privateKey, publicKey }) => {
+        try {
+            if (!privateKey || !publicKey) {
+                console.log('Please enter input data!');
+                return;
+            }
+            if (!rippleValidation.isValidSeed(privateKey) ||
+                !rippleValidation.isValidAddress(publicKey)) {
+                console.log('Invalid input data!');
+                return;
+            }
+            const ecrypyPrivateKey = encryptRippleText(privateKey);
+            const response = await NetworkRepository.updateGeneralWallet(
+                { type: NetworkType.RIPPLE, publicKey, privateKey: ecrypyPrivateKey });
+            if (!response) {
+                console.log('Wallet update failed.check the type of network in db.');
+                return;
+            }
+            console.log('Wallet update successful.');
+        } catch (error) {
+            console.log('Exception occurred:');
+            console.log(error.message);
+        }
     }
 }
 

@@ -12,9 +12,9 @@ exports.getCurrencyBySymbol = async (symbol, network) => {
             "networks.decimalPoint": 1,
             "networks.lastExecutedAt": 1,
             "networks.siteWallet": 1,
+            "networks.adminWallet": 1,
             type: 1,
-            symbol: 1,
-            adminWallet: 1
+            symbol: 1
         })
         .populate('networks.network');
 }

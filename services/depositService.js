@@ -35,6 +35,7 @@ class DepositService {
         if (!currency || !currency.networks[0]) {
             return Response.warn('Invalid Currency');
         }
+
         let web3NetworkType;
         if (networkType)
             web3NetworkType = web3Helper.getWeb3Network(networkType);
@@ -42,15 +43,15 @@ class DepositService {
         //? check for deposit by network 
         if (network.type == NetworkType.RIPPLE) {
             const rippleService = new RippleService();
-            rippleService.updateRippleWalletBalances(currency, network.type);
+            await rippleService.updateRippleWalletBalances(currency, network.type);
         }
         else if (network.type == NetworkType.TRC20) {
             const trc20Service = new Trc20Service();
-            trc20Service.updateTrc20WalletBalances(currency, network.type);
+            await trc20Service.updateTrc20WalletBalances(currency, network.type);
         }
         else if (web3NetworkType) {
             const web3Service = new Web3Service();
-            web3Service.updateWeb3WalletBalances(currency, network.type);
+            await web3Service.updateWeb3WalletBalances(currency, network.type);
         }
         else
             return Response.warn('Invalid request');

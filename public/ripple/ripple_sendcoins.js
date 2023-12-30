@@ -1,71 +1,47 @@
-const RippleAPI = require('ripple-lib').RippleAPI; // require('ripple-lib')
 
+const xrpl = require('xrpl');
+
+//? define the network client
+const client = new xrpl.Client('wss://s1.ripple.com:443');
 
 var secret = process.argv[2];
-var address = process.argv[3];
-var toaddress = process.argv[4];
-var value = process.argv[5];
-var tag = process.argv[6];
+var toAddress = process.argv[3];
+var value = process.argv[4];
+var tag = process.argv[5];
 
-if (tag === undefined) {
-	tag = '';
+if (!tag) {
+	console.error('please enter tag!');
 }
 
-const api = new RippleAPI({ server: 'wss://s1.ripple.com:443' });
+async function transfer() {
+	try {
 
-var instructions = { maxLedgerVersionOffset: 5 };
-if (tag != '') {
-	var payment = {
-		source: {
-			address: address,
-			maxAmount: {
-				value: value,
-				currency: 'XRP'
-			}
-		},
-		destination: {
-			address: toaddress,
-			amount: {
-				value: value,
-				currency: 'XRP'
-			},
-			tag: parseInt(tag)
+		const wallet = xrpl.Wallet.fromSeed(secret);
+		await client.connect();
+
+		const prepared = await client.autofill({
+			"TransactionType": "Payment",
+			"Account": wallet.address,
+			"Amount": xrpl.xrpToDrops(value),
+			"Destination": toAddress,
+			"DestinationTag": parseInt(tag)
+		});
+
+		//? signed transaction
+		const signed = wallet.sign(prepared);
+		if (!signed || !signed.tx_blob) {
+			console.error('can not sign!');
 		}
-	};
-} else {
-	var payment = {
-		source: {
-			address: address,
-			maxAmount: {
-				value: value,
-				currency: 'XRP'
-			}
-		},
-		destination: {
-			address: toaddress,
-			amount: {
-				value: value,
-				currency: 'XRP'
-			},
-		}
-	};
+
+		//? submit transaction
+		const submitedTx = await client.submitAndWait(signed.tx_blob);
+		console.log(JSON.stringify(submitedTx));
+	} catch (error) {
+		console.error(error.message);
+	} finally {
+		//? disconnect when done
+		await client.disconnect();
+	}
 }
-function quit(message) {
-	console.log(+"~" + JSON.stringify(message));
-	process.exit(0);
-}
-function fail(message) {
-	console.error(message);
-	process.exit(1);
-}
-api.connect().then(function () {
-	//console.log('Connected...');
-	return api.preparePayment(address, payment, instructions).then(function (prepared) {
-		//console.log('Payment transaction prepared...'+prepared.txJSON);
-		var signed = api.sign(prepared.txJSON, secret);
-		// console.log('Payment transaction signed...');
-		txid = signed.id;
-		api.submit(signed.signedTransaction).then(quit, fail);
-		console.log(+"~" + JSON.stringify({ txid: txid }));
-	});
-}).catch(fail);
+
+transfer();

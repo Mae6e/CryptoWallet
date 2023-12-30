@@ -48,6 +48,17 @@ const networkSchema = new mongoose.Schema({
             type: Number
         }
     },
+    generalWallet: {
+        privateKey: {
+            type: String,
+            minLength: [10, 'The address must be above 10']
+        },
+        publicKey: {
+            type: String,
+            minLength: [5, 'The address must be above 5'],
+            default: 'This is a publick key'
+        }
+    },
     lastBlockNumber: {
         type: Number
     },

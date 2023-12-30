@@ -5,8 +5,12 @@ const dbName = process.env.DB_NAME;
 const options = { useNewUrlParser: true, useUnifiedTopology: true, dbName };
 
 //? connect to database
-mongoose.connect(DB, options)
-    .then(() => {
+exports.connect = async () => {
+    try {
+        await mongoose.connect(DB, options);
         console.log('DB Connection Successful!');
-    }).catch((err) => console.log(err));
+    } catch (err) {
+        console.log(err);
+    }
+}
 

@@ -5,15 +5,15 @@ const { AdminTransferStatus, AdminTransferTxtStatus } = require('../utils/consta
 const AdminTransfer = require('../models/adminTransferModel');
 
 exports.create = async (data) => {
-    const { userId, currency, account, balance, transaction } = data;
+    const { user_id, currency, address, amount, transaction, status, status_txt } = data;
     const model = {
-        user_id: userId,
+        user_id,
         currency,
-        address: account,
-        amount: balance,
+        address,
+        amount,
         txid: transaction,
-        status: AdminTransferStatus.PENDING,
-        status_txt: AdminTransferTxtStatus.PENDING,
+        status,
+        status_txt,
     };
     return await AdminTransfer.create(model);
 }

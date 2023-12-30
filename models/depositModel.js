@@ -12,6 +12,7 @@ let depositSchema = new mongoose.Schema({
   "ip_address": String,
   "dep_bank_info": { type: String },
   "address_info": { type: String },
+  "tag": { type: String },
   "proof": { type: String },
   "reason": { type: String },
   "total": { type: Number, default: 0 },

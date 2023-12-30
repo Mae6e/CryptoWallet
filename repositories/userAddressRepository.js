@@ -7,9 +7,9 @@ exports.countOfTagByCurrency = async ({ currency, tag }) => {
         .countDocuments({ address: { $elemMatch: { tag, currency } } });
 }
 
-exports.getUserAddressByTag = async (currency, address, tag) => {
+exports.getUserAddressByTag = async (currency, tag) => {
     return await UserAddress
-        .findOne({ address: { $elemMatch: { value: address, currency, tag } } }, { user_id: 1 });
+        .findOne({ address: { $elemMatch: { currency, tag } } }, { user_id: 1 });
 }
 
 exports.getCoinAddressesByTagAndCurrency = async (currency, tags) => {

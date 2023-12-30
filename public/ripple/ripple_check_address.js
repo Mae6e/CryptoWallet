@@ -1,4 +1,4 @@
-var adminaddress=process.argv[2];
+var adminaddress = process.argv[2];
 const crypto = require('crypto-js');
 const hashjs = require('hash.js');
 const baseCodec = require('base-x');
@@ -6,20 +6,17 @@ const codec = baseCodec("rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvA
 // npm install --save ripple-keypairs ripple-binary-codec ripple-hashes
 const Keypairs = require('ripple-keypairs');
 // const Binary = require('ripple-binary-codec');
-const {
-  computeBinaryTransactionHash
-} = require('ripple-hashes');
 
 /**
  * ripple address validation
  */
-exports.isValidAddress = function(address) {
+exports.isValidAddress = function (address) {
   if (/^r[rpshnaf39wBUDNEGHJKLM4PQRST7VWXYZ2bcdeCg65jkm8oFqi1tuvAxyz]{27,35}$/.test(address) === false)
     return false;
   return this.verifyChecksum(address);
 };
 
-exports.verifyChecksum = function(address) {
+exports.verifyChecksum = function (address) {
   const bytes = codec.decode(address);
   const computed = sha256(sha256(bytes.slice(0, -4))).slice(0, 4);
   const checksum = bytes.slice(-4);
@@ -45,7 +42,7 @@ exports.verifyChecksum = function(address) {
 /**
  * ripple seed validation
  */
-exports.isValidSeed = function(seed) {
+exports.isValidSeed = function (seed) {
   try {
     Keypairs.deriveKeypair(seed);
     return true;

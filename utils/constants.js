@@ -71,6 +71,7 @@ exports.PaymentType = {
     4: 'Ethereum (ETH)',
     5: 'Tron (TRX)',
     6: 'Binance Coin (BNB)',
+    7: 'Ripple (XRP)',
     8: 'Arbitrum (ETH)',
     9: 'Polygon (MATIC)'
 }

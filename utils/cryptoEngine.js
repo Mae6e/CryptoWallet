@@ -1,14 +1,8 @@
-
-
 const crypto = require('crypto');
-
 
 class CryptoEngine {
 
-    static encryptText(string) {
-        const secretKey = process.env.SECRET_KEY;
-        const secretIv = process.env.SECRET_IV;
-
+    static encryption(string, secretKey, secretIv) {
         const key = crypto.createHash('sha256').update(secretKey).digest('hex').slice(0, 32);
         const iv = crypto.createHash('sha256').update(secretIv).digest('hex').slice(0, 16);
 
@@ -18,10 +12,7 @@ class CryptoEngine {
         return output;
     }
 
-    static decryptText(string) {
-        const secretKey = process.env.SECRET_KEY;
-        const secretIv = process.env.SECRET_IV;
-
+    static decryption(string, secretKey, secretIv) {
         const key = crypto.createHash('sha256').update(secretKey).digest('hex').slice(0, 32);
         const iv = crypto.createHash('sha256').update(secretIv).digest('hex').slice(0, 16);
 
@@ -30,6 +21,31 @@ class CryptoEngine {
         output += decipher.final('utf8');
         return output;
     }
+
+    static encryptText(string) {
+        const secretKey = process.env.SECRET_KEY;
+        const secretIv = process.env.SECRET_IV;
+        return CryptoEngine.encryption(string, secretKey, secretIv);
+    }
+
+    static decryptText(string) {
+        const secretKey = process.env.SECRET_KEY;
+        const secretIv = process.env.SECRET_IV;
+        return CryptoEngine.decryption(string, secretKey, secretIv);
+    }
+
+    static encryptRippleText(string) {
+        const secretKey = process.env.SECRET_KEY_RIPPLE;
+        const secretIv = process.env.SECRET_IV_RIPPLE;
+        return CryptoEngine.encryption(string, secretKey, secretIv);
+    }
+
+    static decryptRippleText(string) {
+        const secretKey = process.env.SECRET_KEY_RIPPLE;
+        const secretIv = process.env.SECRET_IV_RIPPLE;
+        return CryptoEngine.decryption(string, secretKey, secretIv);
+    }
+
 }
 
 module.exports = CryptoEngine;
