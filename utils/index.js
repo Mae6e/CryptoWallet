@@ -26,6 +26,7 @@ exports.TrxFeeLimit = process.env.TRX_FEE_LIMIT
 exports.WebSocketRipple = process.env.WEBSOCKET_RIPPLE
 exports.ExplorerTrc20 = process.env.EXPLORER_TRC20
 exports.ExplorerRipple = process.env.EXPLORER_RIPPLE
+exports.CryptoWalletApiKey = process.env.CRYPTOWALLET_APIKEY
 
 
 

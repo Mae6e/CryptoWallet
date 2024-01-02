@@ -13,9 +13,7 @@ const { TronGridKey } = require('../utils');
 const logger = require('../logger')(module);
 
 
-
 class NodeHelper {
-
 
     //? execute command and added log
     executeCommand = (command) => {
@@ -34,9 +32,21 @@ class NodeHelper {
         });
     }
 
+    generateTrc20Wallet = async () => {
+        const command = `cd ${path.join(PublicPath, 'public', 'tron')} && node address.js`;
+        const output = await this.executeCommand(command);
+        if (!output) return false;
+        return JSON.parse(output);
+    }
+
+    generateWeb3Wallet = async (web3NetworkType) => {
+        const command = `cd ${path.join(PublicPath, 'public', 'web3')} && node address.js ${web3NetworkType}`;
+        const output = await this.executeCommand(command);
+        if (!output) return false;
+        return JSON.parse(output);
+    }
+
     getRippleBalance = async (address) => {
-        address = 'rp8553VmXp23QjgpomG6sjAXkYNGkeRNxa'
-        console.log(address);
         let value = 0;
         const command = `cd ${path.join(PublicPath, 'public', 'ripple')} && node ripple_balance.js ${address}`;
         const output = await this.executeCommand(command);

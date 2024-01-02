@@ -18,6 +18,10 @@ class Response {
         return new Response(400, 'fail', false, message, undefined);
     }
 
+    static forbid(message) {
+        return new Response(403, 'fail', false, message, undefined);
+    }
+
     static error(statusCode, message) {
         return new Response(statusCode, 'error', false, message, undefined);
     }

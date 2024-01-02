@@ -75,7 +75,6 @@ class WalletAddressService {
 
     generateAddress = async (data) => {
         let { networkSymbol, networkType } = data;
-
         if (!networkSymbol || !networkType) {
             return Response.warn('Please Enter Network Information');
         }
@@ -85,6 +84,7 @@ class WalletAddressService {
             web3NetworkType = web3Helper.getWeb3Network(networkType);
         }
 
+        //! btc, doge
         if (CoinpaymentCurrencies.includes(networkSymbol)) {
             //? BTC, DOGE networks
             const coinPaymentsAPI = new CoinPayments({
@@ -98,6 +98,7 @@ class WalletAddressService {
             const address = result.address;
             return Response.success({ address, tag: '', secret: '', public: '' });
         }
+        //! ripple
         else if (networkType == NetworkType.RIPPLE) {
             //? Ripple network
             const { generalWallet } = await NetworkRepository.getGeneralWalletByType(NetworkType.RIPPLE);
@@ -105,54 +106,39 @@ class WalletAddressService {
                 return Response.warn('Currently, the wallet not found');
             }
             const tag = await this.generateXRPTag(8);
-            return Response.success({
-                address: generalWallet.publicKey,
-                tag, secret: '', public: ''
-            });
+            return Response.success({ address: generalWallet.publicKey, tag });
         }
+        //! trc20
         else if (networkType == NetworkType.TRC20) {
-            //? Assuming address.js is located in the 'tron' folder
-            const output = execSync('cd ' + path.join(PublicPath, 'public', 'tron') + ' && node address.js').toString();
-
-            if (!output)
-                return Response.warn('Currently, Can not get output');
-
-            const res = JSON.parse(output);
-
-            console.log(output);
-            if (res.address) {
-                const key = encryptText(res.privateKey);
-                const address = res.address.base58;
-                const tag = res.address.hex;
-                if (!key || !address || !tag) {
+            const response = await nodeHelper.generateTrc20Wallet();
+            console.log(response);
+            if (response && response.address) {
+                const key = encryptText(response.privateKey);
+                const address = response.address.base58;
+                const tag = response.address.hex;
+                const publicKey = response.publicKey;
+                if (!key || !address || !tag || !publicKey) {
                     return Response.warn('Currently, Can not generate address');
                 }
-                return Response.success({ address, tag, secret: key, public: res.publicKey });
+                return Response.success({ address, tag, secret: key, public: publicKey });
             }
             return Response.warn('Currently, Can not get address');
         }
+        //!web3
         else if (web3NetworkType) {
-            //? Assuming address.js is located in the 'bep' folder
-            const command = 'cd ' + path.join(PublicPath, 'public', 'web3') + ` && node address.js ${web3NetworkType}`;
-            const output = execSync(command).toString();
-            console.log(output);
-
-            if (!output)
-                return Response.warn('Currently, Can not get output');
-
-            const getAddr = JSON.parse(output);
-            console.log(getAddr);
-
-            if (getAddr.address && getAddr.address !== "") {
-                const address = getAddr.address.toLowerCase();
-                const key = encryptText(getAddr.privateKey);
+            const response = await nodeHelper.generateWeb3Wallet(web3NetworkType);
+            console.log(response);
+            if (response && response.address) {
+                const address = response.address.toLowerCase();
+                const key = encryptText(response.privateKey);
                 if (!key) {
                     return Response.warn('Currently, Can not generate address');
                 }
-                return Response.success({ address, tag: randomString(25), secret: key, public: '' });
+                return Response.success({ address, tag: randomString(25), secret: key });
             }
             return Response.warn('Currently, Can not get address');
         }
+
         else {
             return Response.warn('Invalid request');
         }

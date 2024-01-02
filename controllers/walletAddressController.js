@@ -9,14 +9,21 @@ class WalletAddressController {
     generateAddress = catchAsync(async (req, res) => {
         const data = req.body;
         const response = await walletAddressService.generateAddress(data);
-        return res.status(response.statusCode).json(response);
+        return res.json(response);
     });
 
     getSiteWalletBalance = catchAsync(async (req, res) => {
         const data = req.body;
         const response = await walletAddressService.getSiteWalletBalance(data);
-        return res.status(response.statusCode).json(response);
+        return res.json(response);
     });
+
+    getGeneralWallet = catchAsync(async (req, res) => {
+        const data = req.body;
+        const response = await walletAddressService.getGeneralWalletAddress(data.networkType);
+        return res.json(response);
+    });
+
 }
 
 module.exports = WalletAddressController;
