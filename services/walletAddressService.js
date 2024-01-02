@@ -140,7 +140,7 @@ class WalletAddressService {
         }
 
         else {
-            return Response.warn('Invalid request');
+            return Response.warn('Currently, can not get address from this network');
         }
     };
 
