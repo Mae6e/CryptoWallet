@@ -1,8 +1,9 @@
 const RippleAPI = require('ripple-lib').RippleAPI;
+const { WebSocketRipple } = require('../../utils');
 var address = process.argv[2];
 
 const Ripple = new RippleAPI({
-	server: 'wss://s1.ripple.com:443'
+	server: WebSocketRipple
 });
 
 Ripple.on('error', function (errorCode, errorMessage) {
@@ -20,6 +21,7 @@ const getBalances = async () => {
 		console.error(error);
 	} finally {
 		await Ripple.disconnect();
+		process.exit(-1);
 	}
 }
 

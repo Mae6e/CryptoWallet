@@ -1,15 +1,16 @@
+const { TronGridUrl } = require('../../utils');
+
 let pvtKey = process.argv[2];
 let toAddr = process.argv[3];
 let contract = process.argv[4];
 let amount = parseInt(process.argv[5]);
 
 const TronWeb = require('tronweb');
-const TronGrid = require('trongrid');
 const HttpProvider = TronWeb.providers.HttpProvider;
-const fullNode = new HttpProvider('https://api.trongrid.io');
-const solidityNode = new HttpProvider('https://api.trongrid.io');
-const eventServer = new HttpProvider('https://api.trongrid.io');
-var tronWeb = new TronWeb(fullNode, solidityNode, eventServer, pvtKey);
+const fullNode = new HttpProvider(TronGridUrl);
+const solidityNode = new HttpProvider(TronGridUrl);
+const eventServer = new HttpProvider(TronGridUrl);
+const tronWeb = new TronWeb(fullNode, solidityNode, eventServer, pvtKey);
 
 sendToken();
 

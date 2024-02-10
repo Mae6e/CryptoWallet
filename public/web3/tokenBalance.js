@@ -1,12 +1,9 @@
-
 const Web3Helper = require('../../utils/web3Helper');
-const AppError = require('../../utils/appError');
 
 //? Use the web3Network variable in your script
 const network = process.argv[2];
 const contract = process.argv[3];
 const address = process.argv[4];
-const decimalPoint = process.argv[5];
 
 const web3Helper = new Web3Helper();
 
@@ -15,7 +12,8 @@ const tokenBalance = async () => {
 
         const web3 = web3Helper.initialWeb3Network(network);
         if (!web3) {
-            new AppError('The web3 object is null', 400);
+            console.error('The web3 object is null');
+            process.exit(-1);
         }
 
         const tokenAbi = [
@@ -30,12 +28,12 @@ const tokenBalance = async () => {
 
         const tokenContract = new web3.eth.Contract(tokenAbi, contract);
         const balance = await tokenContract.methods.balanceOf(address).call();
-        let tokenBalance = parseFloat(balance) * (1 / Math.pow(10, decimalPoint));
-
-        console.log(JSON.stringify(tokenBalance));
+        console.log(JSON.stringify(balance.toString()));
+        process.exit(-1);
     }
     catch (error) {
-        new AppError(error.message);
+        console.error(error);
+        process.exit(-1);
     }
 }
 

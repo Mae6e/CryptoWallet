@@ -22,7 +22,7 @@ const adminTransferSchema = new mongoose.Schema({
         required: true
     },
     status: {
-        type: String
+        type: Number
     },
     status_txt: {
         type: String

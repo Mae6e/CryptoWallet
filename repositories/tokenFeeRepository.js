@@ -1,13 +1,13 @@
 
 
 //? models
-const TokenFeeModel = require('../models/tokenFeeModel');
+const TokenFee = require('../models/tokenFeeModel');
 const { TokenFeeStatus } = require('../utils/constants');
 
 
 //? find all pay-for-transfer tokens by network
 exports.existsActiveTokenFeesByNetwork = async ({ network, user_id }) => {
-    return await TokenFeeModel.exists({
+    return await TokenFee.exists({
         user_id,
         network, status: TokenFeeStatus.ACTIVE
     });
@@ -15,7 +15,7 @@ exports.existsActiveTokenFeesByNetwork = async ({ network, user_id }) => {
 
 //? find all pay-for-transfer tokens by currency
 exports.existsActiveTokenFeesByCurrency = async ({ network, currency, user_id }) => {
-    return await TokenFeeModel.exists({
+    return await TokenFee.exists({
         user_id,
         network, currency,
         status: TokenFeeStatus.ACTIVE
@@ -24,27 +24,27 @@ exports.existsActiveTokenFeesByCurrency = async ({ network, currency, user_id })
 
 
 //? deactive all by currency
-exports.deactiveTokenFeesByCurrency = async ({ network, currency, userId }) => {
-    return await TokenFeeModel.updateMany({
-        user_id: userId, network, currency, status: TokenFeeStatus.DEACTIVE
-    });
+exports.deactiveTokenFeesByCurrency = async ({ network, currency, user_id }) => {
+    return await TokenFee.updateMany(
+        { user_id, network, currency, status: TokenFeeStatus.ACTIVE },
+        { status: TokenFeeStatus.DEACTIVE, updated_at: new Date() });
 }
 
 //? deactive all by network
-exports.deactiveTokenFeesByNetwork = async ({ network, userId }) => {
-    return await TokenFeeModel.updateMany({
-        user_id: userId, network, status: TokenFeeStatus.DEACTIVE
-    });
+exports.deactiveTokenFeesByNetwork = async ({ network, user_id }) => {
+    return await TokenFee.updateMany(
+        { user_id, network, status: TokenFeeStatus.ACTIVE },
+        { status: TokenFeeStatus.DEACTIVE, updated_at: new Date() });
 }
 
 
 //? create tokenFee
 exports.create = async (model) => {
-    await TokenFee.Create(model);
+    await TokenFee.create(model);
 }
 
 //? get latest pay for token
-getLatestTrxActiveFeeMove = async ({ user_id, address, network, currency }) => {
+exports.getLatestActiveFeeMove = async ({ user_id, address, network, currency }) => {
     return await TokenFee.findOne(
         {
             user_id,

@@ -9,12 +9,15 @@ const generate = async () => {
         const web3 = web3Helper.initialWeb3Network(network);
         if (!web3) {
             console.error('The web3 object is null');
+            process.exit(-1);
         }
         const addr = web3.eth.accounts.create([process.env.WEB3_KEY]);
         console.log(JSON.stringify(addr));
+        process.exit(-1);
     }
     catch (error) {
-        console.error(error.message);
+        console.error(error);
+        process.exit(-1);
     }
 }
 

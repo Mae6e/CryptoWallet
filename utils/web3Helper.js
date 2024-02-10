@@ -27,13 +27,32 @@ class Web3helper {
     }
 
 
+    fromWei(network, value) {
+        const web3 = this.initialWeb3Network(network);
+        return web3.utils.fromWei(value, 'ether');
+    }
+
+    toWei(network, value) {
+        const web3 = this.initialWeb3Network(network);
+        return web3.utils.toWei(value, 'ether');
+    }
+
+    fromGWei(network, value) {
+        const web3 = this.initialWeb3Network(network);
+        return web3.utils.fromWei(value, 'gwei');
+    }
+
+    toGWei(network, value) {
+        const web3 = this.initialWeb3Network(network);
+        return web3.utils.toWei(value, 'gwei');
+    }
+
     getWeb3Network(networkType) {
         try {
             const [key, value] = Object.entries(NetworkType)
                 .find(([key, value]) => value == networkType) || [];
             for (const network of Web3Networks) {
                 if (key === network) {
-                    console.log(key);
                     return value;
                 }
             }
@@ -130,6 +149,41 @@ class Web3helper {
         }
         return data;
     }
+
+
+    //? track main currency and tokens transactions
+    filterTransactions = async ({ transactions, sitePublicKey, networkType }) => {
+        const adminTransactions = [];
+        const recipientTransactions = [];
+
+        //? find transactions for main currency and tokens
+        for (const txObject of transactions) {
+            const { to, value, hash, from, input } = txObject;
+            if (from === to) continue;
+
+            if (value === BigInt(0) || input !== '0x') {
+                const response = await this.getContractTransactionsByHash(networkType, hash);
+                for (const tokenData of response) {
+                    if (tokenData.to === sitePublicKey) {
+                        adminTransactions.push(tokenData);
+                    } else if (tokenData.from !== sitePublicKey) {
+                        recipientTransactions.push(tokenData);
+                    }
+                }
+
+            } else if (to) {
+                const toLowerCase = to.toLowerCase();
+                if (toLowerCase === sitePublicKey) {
+                    adminTransactions.push({ to: toLowerCase, value, hash, from });
+                } else if (from !== sitePublicKey) {
+                    recipientTransactions.push({ to: toLowerCase, value, hash, from });
+                }
+            }
+        }
+
+        return { adminTransactions, recipientTransactions };
+    }
+
 }
 
 module.exports = Web3helper;

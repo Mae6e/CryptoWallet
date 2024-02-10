@@ -1,13 +1,9 @@
 const CoinPayments = require('coinpayments');
-const path = require('path');
 
-const { execSync } = require('child_process');
-
-const { PublicPath } = require('../index');
 const { NetworkSymbol } = require('../utils');
 const Response = require('../utils/response');
 
-const { encryptText, encryptRippleText, decryptRippleText } = require('../utils/cryptoEngine');
+const { encryptText, encryptRippleText } = require('../utils/cryptoEngine');
 const rippleValidation = require('../public/ripple/ripple_check_address');
 
 const NodeHelper = require('../utils/nodeHelper');
@@ -16,8 +12,7 @@ const nodeHelper = new NodeHelper();
 const Web3Helper = require('../utils/web3Helper');
 const web3Helper = new Web3Helper();
 
-const RippleService = require('../services/rippleService');
-const rippleService = new RippleService();
+const worker = require('../workers/index');
 
 //? repositories
 const UserAddressRepository = require('../repositories/userAddressRepository');
@@ -43,35 +38,21 @@ class WalletAddressService {
         this.publicKey = CoinPaymentPublicKey;
     }
 
-    generateXRPTag = async (len = 8) => {
+    generateXRPTag = async (network, len = 8) => {
         const characters = '123456789';
         const charactersLength = characters.length;
         let xrpTag = '';
         for (let i = 0; i < len; i++) {
             xrpTag += characters.charAt(Math.floor(Math.random() * charactersLength));
         }
-        const checkKey = await UserAddressRepository.countOfTagByCurrency({ currency: 'XRP', tag: xrpTag });
-        if (checkKey > 0) {
-            return this.generateXRPTag(8);
+        const checkKey = await UserAddressRepository.existsTagByNetwork({ network, tag: xrpTag });
+        if (checkKey) {
+            return this.generateXRPTag(network, len);
         } else {
             return xrpTag;
         }
     }
 
-    generateXLMTag = async (len = 12) => {
-        const characters = '123456789';
-        const charactersLength = characters.length;
-        let xlmTag = '';
-        for (let i = 0; i < len; i++) {
-            xlmTag += characters.charAt(Math.floor(Math.random() * charactersLength));
-        }
-        const checkKey = await UserAddressRepository.countOfTagByCurrency({ currency: 'XLM', tag: xlmTag });
-        if (checkKey > 0) {
-            return this.generateXLMTag(12);
-        } else {
-            return xlmTag;
-        }
-    }
 
     generateAddress = async (data) => {
         let { networkSymbol, networkType } = data;
@@ -101,11 +82,11 @@ class WalletAddressService {
         //! ripple
         else if (networkType == NetworkType.RIPPLE) {
             //? Ripple network
-            const { generalWallet } = await NetworkRepository.getGeneralWalletByType(NetworkType.RIPPLE);
+            const { generalWallet, _id } = await NetworkRepository.getGeneralWalletByType(NetworkType.RIPPLE);
             if (!generalWallet) {
                 return Response.warn('Currently, the wallet not found');
             }
-            const tag = await this.generateXRPTag(8);
+            const tag = await this.generateXRPTag(_id, 8);
             return Response.success({ address: generalWallet.publicKey, tag });
         }
         //! trc20
@@ -140,7 +121,7 @@ class WalletAddressService {
         }
 
         else {
-            return Response.warn('Invalid request');
+            return Response.warn('Currently, can not get address from this network');
         }
     };
 
@@ -189,27 +170,29 @@ class WalletAddressService {
             if (!networkObject.contractAddress) {
                 const adminAddress = network.siteWallet.publicKey;
                 const { decimalPoint } = currency.networks[0];
-                const balance = nodeHelper.getTrc20Balance(adminAddress, decimalPoint);
+                const balance = await nodeHelper.getTrc20Balance(adminAddress, decimalPoint);
                 return Response.success({ balance, address: adminAddress });
             }
             else {
                 const adminAddress = network.siteWallet.publicKey;
                 const { contractAddress, decimalPoint } = currency.networks[0];
-                const tokenBal = nodeHelper.getTrc20TokenBalance(contractAddress, adminAddress, decimalPoint);
+                const tokenBal = await nodeHelper.getTrc20TokenBalance(contractAddress, adminAddress, decimalPoint);
                 return Response.success({ balance: tokenBal, address: adminAddress });
             }
         }
         else if (web3NetworkType) {
             if (!networkObject.contractAddress) {
                 const adminAddress = network.siteWallet.publicKey;
-                const getBalance = nodeHelper.getWeb3Balance(web3NetworkType, adminAddress);
+                let getBalance = await nodeHelper.getWeb3Balance(web3NetworkType, adminAddress);
+                getBalance = web3Helper.fromWei(web3NetworkType, getBalance);
                 return Response.success({ balance: getBalance, address: adminAddress });
             }
             else {
                 const adminAddress = network.siteWallet.publicKey;
                 const { contractAddress, decimalPoint } = currency.networks[0];
-                const getBalance = nodeHelper.getWeb3TokenBalance(web3NetworkType, contractAddress, adminAddress, decimalPoint);
-                return Response.success({ balance: getBalance, address: adminAddress });
+                const getBalance = await nodeHelper.getWeb3TokenBalance(web3NetworkType, contractAddress, adminAddress);
+                const balance = parseFloat(getBalance) * (1 / Math.pow(10, decimalPoint));
+                return Response.success({ balance, address: adminAddress });
             }
         }
         else {
@@ -260,7 +243,8 @@ class WalletAddressService {
             console.log('');
 
             //? transfer
-            await rippleService.updateRippleWalletBalances(currency, network.type);
+            const depositResponse = await worker.runWorkerByNetwork(network.type);
+            if (!depositResponse) return;
 
             //? generate ripple address
             const generationData = await nodeHelper.rippleGenerateAddress();

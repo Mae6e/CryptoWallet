@@ -1,26 +1,75 @@
-
-const cron = require('node-cron');
-
+//? service
 const DepositService = require('../services/depositService');
 const depositService = new DepositService();
+const UtilityService = require('../services/utilityService');
+const utilityService = new UtilityService();
 
-//? utils
-const { NetworkSymbol } = require('../utils/index');
-const { NetworkType } = require('../utils/constants');
-
-console.log('two')
+const { GethNetworkProviders } = require('../utils/constants');
 
 
-let f = 0;
-//cron.schedule('*/1 * * * *', async () => {
-setInterval(async () => {
-    console.log('this');
-    //if (f === 0) {
-    // console.log('test')
-    await depositService.updateWalletBalance({ symbol: NetworkSymbol.XRP, networkType: NetworkType.RIPPLE });
-    //  }
-    //f = 1;
-    console.log('fffffff');
+exports.updateWallets = async (network) => {
+    try {
+        console.log(`run scheduler for ${network.type}`);
 
-}, 5000);
-// });
+        const initialBlockIndex = network.initialBlockIndex;
+        const endBlockIndex = network.lastOnlineBlockNumber;
+
+        // console.log('scheduler-initialBlockIndex: ', initialBlockIndex);
+        // console.log('scheduler-endBlockIndex: ', endBlockIndex);
+
+        if (!GethNetworkProviders.includes(network.type)) {
+            const result = await utilityService.getTransactionsByNetwork({
+                symbol: network.symbol,
+                networkType: network.type,
+                initialBlockIndex,
+                endBlockIndex,
+                sitePublicKey: network.sitePublicKey
+            });
+
+            if (!result) {
+                console.log('can not find result ...');
+            } else {
+                //? deposit
+                await depositService.updateWalletBalance({
+                    symbol: network.symbol,
+                    networkType: network.type,
+                    initialBlockIndex,
+                    endBlockIndex,
+                    recipientTransactions: result.recipientTransactions,
+                    adminTransactions: result.adminTransactions,
+                    hasUpdatedBlockIndex: true
+                });
+            }
+        }
+        else {
+            for (let i = initialBlockIndex; i <= endBlockIndex; i++) {
+                const result = await utilityService.getTransactionsByNetwork({
+                    symbol: network.symbol,
+                    networkType: network.type,
+                    initialBlockIndex: i,
+                    sitePublicKey: network.sitePublicKey
+                });
+
+                if (!result) {
+                    console.log('can not find result ...');
+                } else {
+                    //? deposit
+                    await depositService.updateWalletBalance({
+                        symbol: network.symbol,
+                        networkType: network.type,
+                        initialBlockIndex: i,
+                        recipientTransactions: result.recipientTransactions,
+                        adminTransactions: result.adminTransactions,
+                        hasUpdatedBlockIndex: true
+                    });
+                }
+            }
+        }
+
+        //console.log(`complete scheduler for ${network.type}`);
+    }
+    catch (error) {
+        console.log("error scheduler: ");
+        console.log(error);
+    }
+}

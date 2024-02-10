@@ -9,9 +9,11 @@ generateAddress = () => {
 
         const balancesJSON = JSON.stringify({ secret, address });
         console.log(balancesJSON);
+        process.exit(-1);
     }
     catch (error) {
         console.error(error);
+        process.exit(-1);
     }
 }
 

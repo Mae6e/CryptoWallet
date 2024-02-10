@@ -34,10 +34,31 @@ exports.getAllTokensByNetwork = async (network) => {
             symbol: 1,
             "networks.contractAddress": 1,
             "networks.network": 1,
+            "networks.adminWallet": 1,
             "networks.decimalPoint": 1
         })
         .populate('networks.network');
 }
+
+
+//! skip
+exports.getAllTokens = async (network) => {
+    return await Currencies.find({
+        $or: [{ type: CurrencyType.TOKEN }, { type: CurrencyType.COIN_OR_TOKEN }],
+        networks: {
+            $elemMatch: {
+                network: network,
+                contractAddress: { $exists: true, $ne: '' }
+            }
+        }
+    }, {
+        symbol: 1,
+        "networks.contractAddress": 1,
+        "networks.adminWallet": 1,
+        "networks.decimalPoint": 1
+    });
+}
+
 
 
 

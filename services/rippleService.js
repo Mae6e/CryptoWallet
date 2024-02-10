@@ -4,7 +4,7 @@ const UserAddressRepository = require('../repositories/userAddressRepository');
 const AdminTransferRepository = require('../repositories/adminTransferRepository');
 
 //? utils
-const { SourceUserId } = require('../utils');
+const { SourceUserId, XrpFeeLimit } = require('../utils');
 const { DepositState, CryptoType, PaymentType } = require('../utils/constants');
 const { decryptRippleText } = require('../utils/cryptoEngine');
 
@@ -25,7 +25,9 @@ class RippleService {
     //#region deposit
 
     //? main function for recognize for deposit
-    updateRippleWalletBalances = async (currency, networkType) => {
+    updateRippleWalletBalances = async (depositParams) => {
+        const { currency, networkType, recipientTransactions,
+            initialBlockIndex, endBlockIndex, hasUpdatedBlockIndex } = depositParams;
         try {
             //? currency info
             const { network, adminWallet, decimalPoint } =
@@ -41,36 +43,28 @@ class RippleService {
             }
 
             const userAddress = network.generalWallet.publicKey;
-            const lastOnlineBlockNumber = await nodeHelper.getLastLedgerIndex();
+            logger.debug(`updateRippleWalletBalances|start`, { initialBlockIndex, endBlockIndex, length: recipientTransactions.length });
 
-            if (!lastOnlineBlockNumber) return;
-            if (Number(network.lastBlockNumber) === Number(lastOnlineBlockNumber)) return;
-
-            const start = network.lastBlockNumber ? network.lastBlockNumber + 1 : -1;
-            let end = start > 0 ? start + 1000 : 50000000;
-            end = end < lastOnlineBlockNumber ? end : lastOnlineBlockNumber;
-
-            const response = await nodeHelper.getRippleLedgerTransactions({ account: userAddress, start, end });
-
-            logger.debug(`updateRippleWalletBalances|start`, { start, end, length: response.length });
-
-            if (!response && typeof (response) === 'number') return;
-            else if (response.length === 0) {
-                logger.info(`updateRippleWalletBalances|findData`, { start, end, transactions: response.length });
+            if (!recipientTransactions && typeof (recipientTransactions) === 'number') return;
+            else if (recipientTransactions.length === 0) {
+                logger.info(`updateRippleWalletBalances|findData`, { initialBlockIndex, endBlockIndex });
             }
             else {
-                logger.debug(`updateRippleWalletBalances|success`, { start, end });
-                for (const transaction of response) {
+                logger.debug(`updateRippleWalletBalances|success`, { initialBlockIndex, endBlockIndex });
+                for (const transaction of recipientTransactions) {
                     await this.processRippleTransaction({
                         transaction, symbol: currency.symbol,
-                        decimalPoint, userAddress, networkType
+                        decimalPoint, userAddress, networkType,
+                        networkId: network._id
                     });
                 }
             }
 
             //? update the block and date of executed
-            await NetworkRepository.updateLastStatusOfNetwork(network, end);
-            logger.info(`updateRippleWalletBalances|changeBlockState`, { end });
+            if (hasUpdatedBlockIndex) {
+                await NetworkRepository.updateLastStatusOfNetwork(network, endBlockIndex);
+                logger.info(`updateRippleWalletBalances|changeBlockState`, { endBlockIndex });
+            }
 
             //? transfer balance of wallet
             await this.rippleExternalTransfer({
@@ -79,13 +73,13 @@ class RippleService {
             });
 
         } catch (error) {
-            logger.error(`updateRippleWalletBalances|exception`, { currency }, error);
+            logger.error(`updateRippleWalletBalances|exception`, { currency }, error.stack);
         }
     }
 
     //? check transactions for users and admin
     processRippleTransaction = async (data) => {
-        const { transaction, symbol, decimalPoint, userAddress, networkType } = data;
+        const { transaction, symbol, decimalPoint, userAddress, networkType, networkId } = data;
         let { Destination, DestinationTag,
             Amount, hash, date, ledger_index } = transaction;
 
@@ -98,7 +92,7 @@ class RippleService {
         logger.debug(`processRippleTransaction|waiting for deposit.`, { transaction });
 
         const amount = parseFloat(Amount) / Math.pow(10, decimalPoint);
-        const userAddressDocument = await UserAddressRepository.getUserAddressByTag(symbol, DestinationTag);
+        const userAddressDocument = await UserAddressRepository.getUserAddressByTag(networkId, DestinationTag);
         if (userAddressDocument) {
             const data = {
                 txid: hash,
@@ -151,9 +145,9 @@ class RippleService {
             const mainWalletBalance = await nodeHelper.getRippleBalance(userAddress);
 
             //? the xrp account block 20 ripple
-            let amount = mainWalletBalance - 20;
+            let amount = mainWalletBalance - XrpFeeLimit;
 
-            if (amount <= 10) {
+            if (amount < XrpFeeLimit) {
                 logger.warn(`rippleExternalTransfer|balance is not enough for the transfer`, { mainWalletBalance });
                 return;
             }
@@ -191,7 +185,7 @@ class RippleService {
             logger.info(`rippleExternalTransfer|complete transfer`, { transData });
 
         } catch (error) {
-            logger.error(`rippleExternalTransfer|exception`, null, error);
+            logger.error(`rippleExternalTransfer|exception`, null, error.stack);
         }
     }
 

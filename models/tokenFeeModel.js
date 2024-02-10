@@ -1,10 +1,6 @@
 const mongoose = require('mongoose');
 
 const tokenFeeSchema = new mongoose.Schema({
-    _id: {
-        type: mongoose.Schema.Types.ObjectId,
-        required: true
-    },
     user_id: {
         type: mongoose.Schema.Types.ObjectId,
         required: true,
@@ -38,14 +34,8 @@ const tokenFeeSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    updated_at: {
-        type: Date,
-        required: true
-    },
-    created_at: {
-        type: Date,
-        required: true
-    }
+    created_at: { type: Date, default: Date.now },
+    updated_at: { type: Date, default: Date.now }
 }, { versionKey: false });
 
 const TokenFeeModel = mongoose.model('token_fees', tokenFeeSchema, 'token_fees');

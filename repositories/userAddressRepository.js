@@ -1,45 +1,63 @@
 
 //? models
 const UserAddress = require('../models/userAddressModel');
+const { WalletProvider } = require('../utils/constants');
 
-exports.countOfTagByCurrency = async ({ currency, tag }) => {
+exports.existsTagByNetwork = async ({ network, tag }) => {
     return await UserAddress
-        .countDocuments({ address: { $elemMatch: { tag, currency } } });
+        .exists({ address: { $elemMatch: { tag, network } } });
 }
 
-exports.getUserAddressByTag = async (currency, tag) => {
+exports.getUserAddressByTag = async (network, tag) => {
     return await UserAddress
-        .findOne({ address: { $elemMatch: { currency, tag } } }, { user_id: 1 });
+        .findOne({ address: { $elemMatch: { network, tag } } }, { user_id: 1 });
 }
 
-exports.getCoinAddressesByTagAndCurrency = async (currency, tags) => {
+exports.getUserAddressesByTags = async (network, tags) => {
     return await UserAddress.find({
         address: {
             $elemMatch: {
                 tag: { $in: tags },
-                currency: currency
+                network
             }
         }
     }).select('user_id address').lean();
 }
 
 
-exports.getCoinAddressesByValueAndCurrency = async (currency, addresses) => {
+exports.getWeb3UserAddressesByValue = async (addresses) => {
     return await UserAddress.find({
         address: {
             $elemMatch: {
                 value: { $in: addresses },
-                currency: currency
+                walletProvider: WalletProvider.Geth
             }
         }
     }).select('user_id address').lean();
 }
 
 
-exports.getCoinAddressesByUsers = async ({ currency, users }) => {
+exports.getUserAddressesByUsers = async ({ network, users }) => {
     return await UserAddress.find({
-        currency,
-        user_id: { $in: users }
+        user_id: { $in: users },
+        address: {
+            $elemMatch: {
+                network
+            }
+        }
+    }).select('user_id address').lean();
+}
+
+
+
+exports.getWeb3UserAddressesByUsers = async ({ users }) => {
+    return await UserAddress.find({
+        user_id: { $in: users },
+        address: {
+            $elemMatch: {
+                walletProvider: WalletProvider.Geth
+            }
+        }
     }).select('user_id address').lean();
 }
 

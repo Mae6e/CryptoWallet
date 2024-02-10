@@ -1,8 +1,16 @@
+
 const path = require('path');
 const { createLogger, format, transports } = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
+const Sentry = require('winston-transport-sentry-node').default;
 
 const logLevels = process.env.LOG_LEVELS.split(',');
+
+const options = {
+    sentry: {
+        dsn: 'https://a4c10ac7c36be094924a977c8aad78f2@o4505766415040512.ingest.sentry.io/4505766458097664',
+    }
+};
 
 //? create loggerBase for each level
 const createLoggerBase = (levelItem) => {
@@ -27,7 +35,8 @@ const createLoggerBase = (levelItem) => {
                     datePattern: 'YYYY-MM-DD',
                     zippedArchive: true,
                     level: 'debug'
-                })
+                }),
+            new Sentry(options)
         ],
         exitOnError: false
     });

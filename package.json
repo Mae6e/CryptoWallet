@@ -5,8 +5,11 @@
   "main": "app.js",
   "scripts": {
     "start": "nodemon app.js",
+    "start-worker": "node ./workers/index.js",
     "update-ripple-wallet": "node ./command-executor/rippleExecutor.js -update",
-    "generate-ripple-wallet": "node ./command-executor/rippleExecutor.js -generate"
+    "generate-ripple-wallet": "node ./command-executor/rippleExecutor.js -generate",
+    "encrypt": "node ./command-executor/encryptWallet.js",
+    "fix-address": "node ./schedulers/userAddressScheduler.js"
   },
   "keywords": [],
   "author": "",
@@ -31,6 +34,8 @@
     "web3-eth-abi": "^4.1.4",
     "winston": "^3.11.0",
     "winston-daily-rotate-file": "^4.7.1",
+    "winston-transport-sentry-node": "^2.7.0",
+    "workerpool": "^9.0.4",
     "xrpl": "^2.14.0"
   }
 }

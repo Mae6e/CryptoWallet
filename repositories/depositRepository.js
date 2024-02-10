@@ -31,6 +31,6 @@ exports.UpdateDepositsByStatus = async ({ currency, address_info }) => {
 //? update deposit to complete status
 exports.UpdateDepositsToCompeleted = async ({ currency, address_info }) => {
     await Deposit.updateMany({
-        currency, address_info
+        currency, address_info, move_status: DepositMoveStatus.move_status
     }, { $set: { move_status: DepositMoveStatus.COMPLETED, updated_at: new Date() } })
 }

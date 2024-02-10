@@ -1,16 +1,20 @@
 
 const xrpl = require('xrpl');
+const { WebSocketRipple } = require('../../utils');
+
 
 //? define the network client
-const client = new xrpl.Client('wss://s1.ripple.com:443');
+const client = new xrpl.Client(WebSocketRipple);
 
-var secret = process.argv[2];
-var toAddress = process.argv[3];
-var value = process.argv[4];
-var tag = process.argv[5];
+
+const secret = process.argv[2];
+const toAddress = process.argv[3];
+const value = process.argv[4];
+const tag = process.argv[5];
 
 if (!tag) {
 	console.error('please enter tag!');
+	process.exit(-1);
 }
 
 async function transfer() {
@@ -37,10 +41,11 @@ async function transfer() {
 		const submitedTx = await client.submitAndWait(signed.tx_blob);
 		console.log(JSON.stringify(submitedTx));
 	} catch (error) {
-		console.error(error.message);
+		console.error(error);
 	} finally {
 		//? disconnect when done
 		await client.disconnect();
+		process.exit(-1);
 	}
 }
 

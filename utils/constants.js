@@ -59,6 +59,7 @@ exports.NetworkType = {
     POLYGON: 9
 }
 
+exports.GethNetworkProviders = [4, 6, 8, 9];
 
 exports.DepositState = {
     COMPLETED: 'completed'
@@ -82,6 +83,22 @@ exports.TokenPaymentType = {
     6: 'BNB (BEP20)',
     8: 'ETH (ARBITRUM)',
     9: 'MATIC (POLYGON)'
+}
+
+exports.BlockOffset = {
+    4: 10,
+    5: 100,
+    6: 10,
+    7: 100,
+    8: 10,
+    9: 10
+}
+
+exports.CoefficientTransfer = {
+    4: 3,
+    6: 10,
+    8: 10,
+    9: 10
 }
 
 
@@ -109,3 +126,13 @@ exports.TokenFeeStatus = {
     DEACTIVE: 'deactive'
 }
 
+exports.WalletProvider = {
+    'Other': 0,
+    'Geth': 1
+}
+
+exports.DepositWorkerStatus = {
+    PENDING: 1,
+    SUCCESS: 2,
+    FAIL: 3
+}

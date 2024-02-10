@@ -13,7 +13,7 @@ if (process.env.NODE_ENV === 'development') app.use(morgan('dev'));
 //? config connction database
 require('./config/db').connect();
 
-//require("./schedulers/depositScheduler");
+const workers = require('./workers');
 
 const walletAddressRoutes = require('./routes/walletAddressRoutes');
 const errorController = require('./controllers/errorController');
@@ -46,5 +46,8 @@ const port = process.env.PORT || 3000;
 const server = app.listen(port, () => {
     console.log(`App runnig on port ${port}...`);
 });
+
+//? run worker
+workers.runWorker();
 
 app.use(errorController);
