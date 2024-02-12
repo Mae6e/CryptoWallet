@@ -91,7 +91,7 @@ exports.BlockOffset = {
     6: 10,
     7: 100,
     8: 10,
-    9: 10
+    9: 5
 }
 
 exports.CoefficientTransfer = {

@@ -22,6 +22,8 @@ const web3Helper = new Web3Helper();
 //? logger
 const logger = require('../logger')(module);
 
+const runWorkers = require('../workers/runWorkers');
+
 class UtilityService {
     //? add user Deposit, update userWallet 
     updateUserWallet = async (data) => {
@@ -178,22 +180,28 @@ class UtilityService {
     }
 
 
-    getWeb3Transactions = async ({ networkType, initialBlockIndex, sitePublicKey }) => {
-        const transactions = await web3Helper.getTransactionsByBlockNumber(networkType, initialBlockIndex);
+    getWeb3Transactions = async ({ networkType, initialBlockIndex, endBlockIndex, sitePublicKey }) => {
+
+        const transactions = await runWorkers.web3TrackTransactionsCreateWorker(
+            { fromBlock: initialBlockIndex, toBlock: endBlockIndex });
+        // const transactions =
+        //await web3Helper.getTransactionsByBlockNumber(networkType, initialBlockIndex);
         if (!transactions || transactions.length === 0) {
             logger.error(`getWeb3Transactions|deposit block has empty results`,
-                { transactions, initialBlockIndex });
+                { transactions, initialBlockIndex, endBlockIndex });
             return false;
         }
 
         sitePublicKey = sitePublicKey.toLowerCase();
         logger.info(`getWeb3Transactions|tracking transactions of block`, { transactions: transactions.length, initialBlockIndex });
 
-        const { adminTransactions, recipientTransactions } = await web3Helper.filterTransactions({ transactions, sitePublicKey, networkType });
+        const { adminTransactions, recipientTransactions } = await web3Helper.filterTransactions({ transactions, sitePublicKey });
         logger.info(`getWeb3Transactions|get result of track transactions`, {
             initialBlockIndex,
+            endBlockIndex,
             recipientTransactions: recipientTransactions.length,
-            adminTransactions: adminTransactions.length
+            adminTransactions: adminTransactions.length,
+            networkType
         });
 
         return { adminTransactions, recipientTransactions };

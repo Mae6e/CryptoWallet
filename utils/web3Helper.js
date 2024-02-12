@@ -10,6 +10,22 @@ const topic = process.env.TOPIC_WEB3;
 
 class Web3helper {
 
+    initialWeb3TrackNetwork(network) {
+        //? MainNet
+        if (network == NetworkType.BSC) {
+            return new Web3(process.env.BSC_TRACK);
+        }
+        else if (network == NetworkType.ERC20) {
+            return new Web3(process.env.RPC_ENDPOINT_ERC20);
+        }
+        else if (network == NetworkType.ARBITRUM) {
+            return new Web3(process.env.RPC_ENDPOINT_ARBITRUM);
+        }
+        else if (network == NetworkType.POLYGON) {
+            return new Web3(process.env.RPC_ENDPOINT_POLYGON);
+        }
+    }
+
     initialWeb3Network(network) {
         //? MainNet
         if (network == NetworkType.BSC) {
@@ -90,12 +106,54 @@ class Web3helper {
         return result.toString();
     }
 
+    //! skip
     async getTransactionsByBlockNumber(network, blockNumber) {
         const web3 = this.initialWeb3Network(network);
         const result = await web3.eth.getBlock(blockNumber, true);
         if (!result) return [];
         return result.transactions;
     }
+
+    //? use in workers
+    async getTransactionsFromBlockNumber(network, fromBlock, toBlock) {
+
+        const web3 = this.initialWeb3TrackNetwork(network);
+        let array = [];
+
+        //! tokens
+        let events = await web3.eth.getPastLogs({
+            fromBlock,
+            toBlock,
+            topics: [topic]
+        });
+
+        for await (const item of events) {
+            if (item.data !== '0x' && item.data) {
+                let transaction = {};
+                transaction.contract = item.address;
+                transaction.hash = item.transactionHash;
+                transaction.value = abiCoder.decodeParameter('uint256', item.data);
+
+                if (item.topics[1])
+                    transaction.from = abiCoder.decodeParameter('address', item.topics[1]).toLowerCase();
+                if (item.topics[2])
+                    transaction.to = abiCoder.decodeParameter('address', item.topics[2]).toLowerCase();
+                array.push(transaction);
+            }
+        }
+
+        //! main currency
+        for (let i = fromBlock; i < toBlock; i++) {
+            const result = await web3.eth.getBlock(i, true);
+            const transactions = result.transactions
+                .filter(item => (item.value !== BigInt(0)))
+                .map(x => ({ from: x.from.toLowerCase(), to: x.to.toLowerCase(), value: x.value, hash: x.hash }));
+            array = array.concat(transactions);
+        }
+
+        return array;
+    }
+
 
     async getTransactionReceiptByHash(network, transactionHash) {
         try {
@@ -108,6 +166,7 @@ class Web3helper {
         }
     }
 
+    //! skip - performance
     async getContractTransactionsByHash(network, transactionHash) {
         const web3 = this.initialWeb3Network(network);
         let response = await web3.eth.getTransactionReceipt(transactionHash);
@@ -152,34 +211,23 @@ class Web3helper {
 
 
     //? track main currency and tokens transactions
-    filterTransactions = async ({ transactions, sitePublicKey, networkType }) => {
-        const adminTransactions = [];
-        const recipientTransactions = [];
+    filterTransactions = async ({ transactions, sitePublicKey }) => {
+        // const adminTransactions = [];
+        // const recipientTransactions = [];
 
         //? find transactions for main currency and tokens
-        for (const txObject of transactions) {
-            const { to, value, hash, from, input } = txObject;
-            if (from === to) continue;
+        const adminTransactions = transactions.filter(x => x.to === sitePublicKey);
+        const recipientTransactions = transactions.filter(x => x.from !== sitePublicKey);
 
-            if (value === BigInt(0) || input !== '0x') {
-                const response = await this.getContractTransactionsByHash(networkType, hash);
-                for (const tokenData of response) {
-                    if (tokenData.to === sitePublicKey) {
-                        adminTransactions.push(tokenData);
-                    } else if (tokenData.from !== sitePublicKey) {
-                        recipientTransactions.push(tokenData);
-                    }
-                }
-
-            } else if (to) {
-                const toLowerCase = to.toLowerCase();
-                if (toLowerCase === sitePublicKey) {
-                    adminTransactions.push({ to: toLowerCase, value, hash, from });
-                } else if (from !== sitePublicKey) {
-                    recipientTransactions.push({ to: toLowerCase, value, hash, from });
-                }
-            }
-        }
+        // for await (const txObject of transactions) {
+        //     const { to, from } = txObject;
+        //     if (from === to) continue;
+        //     if (to === sitePublicKey) {
+        //         adminTransactions.push(txObject);
+        //     } else if (from !== sitePublicKey) {
+        //         recipientTransactions.push(txObject);
+        //     }
+        // }
 
         return { adminTransactions, recipientTransactions };
     }

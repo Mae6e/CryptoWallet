@@ -30,7 +30,7 @@ class Web3Service {
 
   //? main function for recognize for deposit
   updateWeb3WalletBalances = async (depositParams) => {
-    const { currency, networkType, initialBlockIndex,
+    const { currency, networkType, initialBlockIndex, endBlockIndex,
       hasUpdatedBlockIndex, recipientTransactions, adminTransactions } = depositParams;
     try {
       //? currency info
@@ -44,7 +44,7 @@ class Web3Service {
       const networkId = network._id;
 
       logger.info(`updateWeb3WalletBalances|currency information`, networkType);
-      logger.debug(`updateWeb3WalletBalances|start`, { initialBlockIndex });
+      logger.debug(`updateWeb3WalletBalances|start`, { initialBlockIndex, endBlockIndex });
 
       //? get all tokens and format tokens data
       const tokens = await utilityService.getAllTokensByNetwork(networkId);
@@ -60,8 +60,8 @@ class Web3Service {
 
       if (hasUpdatedBlockIndex) {
         //? update the block and date of executed
-        await NetworkRepository.updateLastStatusOfNetwork(networkId, initialBlockIndex);
-        logger.info(`updateWeb3WalletBalances|changeBlockState`, { networkId, initialBlockIndex });
+        await NetworkRepository.updateLastStatusOfNetwork(networkId, endBlockIndex);
+        logger.info(`updateWeb3WalletBalances|changeBlockState`, { networkId, endBlockIndex });
       }
 
     } catch (error) {
@@ -154,6 +154,16 @@ class Web3Service {
         let paymentType;
         let currency;
 
+
+        const receiptResult = await web3Helper.getTransactionReceiptByHash(networkType, hash);
+        if (!receiptResult) {
+          logger.error(`processRecipientTransactions|can not check the status of transaction`, { networkType, hash });
+          continue;
+        }
+
+        if (receiptResult.status !== BigInt(1))
+          continue;
+
         if (isContract) {
           const token = this.findTokenByContract(tokens, contract);
           if (!token) continue;
@@ -162,16 +172,6 @@ class Web3Service {
           currency = token.symbol;
         }
         else {
-
-          const receiptResult = await web3Helper.getTransactionReceiptByHash(networkType, hash);
-          if (!receiptResult) {
-            logger.error(`processRecipientTransactions|can not check the status of transaction`, { networkType, hash });
-            continue;
-          }
-
-          if (receiptResult.status !== BigInt(1))
-            continue;
-
           amount = Number(value) / Math.pow(10, decimalPoint);
           paymentType = PaymentType[networkType];
           currency = symbol;
@@ -190,7 +190,7 @@ class Web3Service {
           status: DepositState.COMPLETED,
           currency_type: CryptoType.CRYPTO,
           address_info: addressValue,
-          block: blockNumber
+          block: receiptResult.blockNumber
         };
 
         logger.info(`processRecipientTransactions|check user wallet for new deposit ${currency}`, data);
