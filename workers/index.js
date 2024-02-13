@@ -116,16 +116,7 @@ const taskManager = async (param) => {
 const saveTask = async ({ task, result }) => {
     let { _id, networkSymbol, networkType, currentBlockIndex, targetBlockIndex } = task;
 
-    //let gotoIndex = 0;
     //? update current block index
-    // if (!GethNetworkProviders.includes(networkType)) {
-    //     gotoIndex = currentBlockIndex;
-    // }
-    // else {
-    //     gotoIndex = targetBlockIndex;
-    // }
-
-    //for (let i = currentBlockIndex; i <= gotoIndex; i++) {
     if (!result) {
         console.log('can not find result ...');
     } else {
@@ -145,7 +136,7 @@ const saveTask = async ({ task, result }) => {
         //? update next index
         await DepositWorkerRepository.updateCurrentBlockById(_id, targetBlockIndex, status);
     }
-    // }
+
 }
 
 const execute = async ({ index, total, task }) => {
@@ -178,14 +169,8 @@ const preparingTask = async ({ networkType, sitePublicKey }) => {
     for (let i = 0; i < taskQueueLength; i++) {
         let task = taskQueue[i];
         task.sitePublicKey = sitePublicKey;
-        // if (GethNetworkProviders.includes(networkType)) {
-        //     for (const j = task.currentBlockIndex; j <= task.targetBlockIndex; j++) {
-        //         await execute({ index: j, total: taskQueueLength - 1, task });
-        //         task.currentBlockIndex += 1;
-        //     }
-        // } else {
         await execute({ index: i, total: taskQueueLength - 1, task });
-        // }
+
     }
 }
 

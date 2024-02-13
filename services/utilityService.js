@@ -152,8 +152,11 @@ class UtilityService {
             case NetworkType.ARBITRUM:
             case NetworkType.POLYGON:
             case NetworkType.BSC:
-                index = await web3Helper.getLatestBlockNumber(networkType);
-                break;
+                {
+                    index = await web3Helper.getLatestBlockNumber(networkType);
+                    index = Number(index);
+                    break;
+                }
             case NetworkType.RIPPLE:
                 index = await nodeHelper.getLastLedgerIndex();
                 break;
@@ -181,30 +184,39 @@ class UtilityService {
 
 
     getWeb3Transactions = async ({ networkType, initialBlockIndex, endBlockIndex, sitePublicKey }) => {
+        try {
 
-        const transactions = await runWorkers.web3TrackTransactionsCreateWorker(
-            { fromBlock: initialBlockIndex, toBlock: endBlockIndex });
-        // const transactions =
-        //await web3Helper.getTransactionsByBlockNumber(networkType, initialBlockIndex);
-        if (!transactions || transactions.length === 0) {
-            logger.error(`getWeb3Transactions|deposit block has empty results`,
-                { transactions, initialBlockIndex, endBlockIndex });
+            if (initialBlockIndex >= endBlockIndex) return false;
+
+            const response = await runWorkers.web3TrackTransactionsCreateWorker(
+                { network: networkType, fromBlock: initialBlockIndex, toBlock: endBlockIndex });
+
+            const transactions = response.result;
+
+            if (!transactions || transactions.length === 0) {
+                logger.error(`getWeb3Transactions|deposit block has empty results`,
+                    { transactions, initialBlockIndex, endBlockIndex });
+                return false;
+            }
+
+            sitePublicKey = sitePublicKey.toLowerCase();
+            logger.info(`getWeb3Transactions|tracking transactions of block`, { transactions: transactions.length, initialBlockIndex });
+
+            const { adminTransactions, recipientTransactions } = await web3Helper.filterTransactions({ transactions, sitePublicKey });
+            logger.info(`getWeb3Transactions|get result of track transactions`, {
+                initialBlockIndex,
+                endBlockIndex,
+                recipientTransactions: recipientTransactions.length,
+                adminTransactions: adminTransactions.length,
+                networkType
+            });
+
+            return { adminTransactions, recipientTransactions };
+        }
+        catch (error) {
+            logger.error(`getWeb3Transactions|exception`, { networkType, initialBlockIndex, endBlockIndex }, error.stack);
             return false;
         }
-
-        sitePublicKey = sitePublicKey.toLowerCase();
-        logger.info(`getWeb3Transactions|tracking transactions of block`, { transactions: transactions.length, initialBlockIndex });
-
-        const { adminTransactions, recipientTransactions } = await web3Helper.filterTransactions({ transactions, sitePublicKey });
-        logger.info(`getWeb3Transactions|get result of track transactions`, {
-            initialBlockIndex,
-            endBlockIndex,
-            recipientTransactions: recipientTransactions.length,
-            adminTransactions: adminTransactions.length,
-            networkType
-        });
-
-        return { adminTransactions, recipientTransactions };
     }
 
 

@@ -112,7 +112,7 @@ class Web3Service {
     const { recipientTransactions, tokens, symbol, decimalPoint, blockNumber, networkType } = data;
     //? check user wallet update
     if (recipientTransactions.length === 0) {
-      logger.info(`processRecipientTransactions|not exist recipientTransactions`, data);
+      logger.info(`processRecipientTransactions|not exist recipientTransactions`, { symbol, decimalPoint, blockNumber, networkType });
       return;
     }
 
@@ -190,7 +190,7 @@ class Web3Service {
           status: DepositState.COMPLETED,
           currency_type: CryptoType.CRYPTO,
           address_info: addressValue,
-          block: receiptResult.blockNumber
+          block: receiptResult.blockNumber.toString()
         };
 
         logger.info(`processRecipientTransactions|check user wallet for new deposit ${currency}`, data);

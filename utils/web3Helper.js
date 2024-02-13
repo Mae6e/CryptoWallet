@@ -7,6 +7,9 @@ const { Web3Networks } = require('./../utils');
 
 const topic = process.env.TOPIC_WEB3;
 
+//? logger
+const logger = require('../logger')(module);
+
 
 class Web3helper {
 
@@ -117,41 +120,48 @@ class Web3helper {
     //? use in workers
     async getTransactionsFromBlockNumber(network, fromBlock, toBlock) {
 
-        const web3 = this.initialWeb3TrackNetwork(network);
-        let array = [];
+        try {
 
-        //! tokens
-        let events = await web3.eth.getPastLogs({
-            fromBlock,
-            toBlock,
-            topics: [topic]
-        });
+            const web3 = this.initialWeb3TrackNetwork(network);
+            let array = [];
 
-        for await (const item of events) {
-            if (item.data !== '0x' && item.data) {
-                let transaction = {};
-                transaction.contract = item.address;
-                transaction.hash = item.transactionHash;
-                transaction.value = abiCoder.decodeParameter('uint256', item.data);
+            //! tokens
+            let events = await web3.eth.getPastLogs({
+                fromBlock,
+                toBlock,
+                topics: [topic]
+            });
 
-                if (item.topics[1])
-                    transaction.from = abiCoder.decodeParameter('address', item.topics[1]).toLowerCase();
-                if (item.topics[2])
-                    transaction.to = abiCoder.decodeParameter('address', item.topics[2]).toLowerCase();
-                array.push(transaction);
+
+            for (const item of events) {
+                if (item.data !== '0x' && item.data) {
+                    let transaction = {};
+                    transaction.contract = item.address;
+                    transaction.hash = item.transactionHash;
+                    transaction.value = abiCoder.decodeParameter('uint256', item.data);
+
+                    if (item.topics[1])
+                        transaction.from = abiCoder.decodeParameter('address', item.topics[1]).toLowerCase();
+                    if (item.topics[2])
+                        transaction.to = abiCoder.decodeParameter('address', item.topics[2]).toLowerCase();
+                    array.push(transaction);
+                }
             }
-        }
 
-        //! main currency
-        for (let i = fromBlock; i < toBlock; i++) {
-            const result = await web3.eth.getBlock(i, true);
-            const transactions = result.transactions
-                .filter(item => (item.value !== BigInt(0)))
-                .map(x => ({ from: x.from.toLowerCase(), to: x.to.toLowerCase(), value: x.value, hash: x.hash }));
-            array = array.concat(transactions);
-        }
+            //! main currency
+            for (let i = fromBlock; i < toBlock; i++) {
+                const result = await web3.eth.getBlock(i, true);
+                const transactions = result.transactions
+                    .filter(item => (item.value !== BigInt(0)))
+                    .map(x => ({ from: x.from.toLowerCase(), to: x.to.toLowerCase(), value: x.value, hash: x.hash }));
+                array = array.concat(transactions);
+            }
 
-        return array;
+            return array;
+        } catch (error) {
+            logger.error(`getTransactionsFromBlockNumber|exception`, { network, fromBlock, toBlock }, error.stack);
+            return false;
+        }
     }
 
 
@@ -212,22 +222,11 @@ class Web3helper {
 
     //? track main currency and tokens transactions
     filterTransactions = async ({ transactions, sitePublicKey }) => {
-        // const adminTransactions = [];
-        // const recipientTransactions = [];
+
 
         //? find transactions for main currency and tokens
         const adminTransactions = transactions.filter(x => x.to === sitePublicKey);
         const recipientTransactions = transactions.filter(x => x.from !== sitePublicKey);
-
-        // for await (const txObject of transactions) {
-        //     const { to, from } = txObject;
-        //     if (from === to) continue;
-        //     if (to === sitePublicKey) {
-        //         adminTransactions.push(txObject);
-        //     } else if (from !== sitePublicKey) {
-        //         recipientTransactions.push(txObject);
-        //     }
-        // }
 
         return { adminTransactions, recipientTransactions };
     }
